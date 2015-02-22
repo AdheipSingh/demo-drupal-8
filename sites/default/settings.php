@@ -24,19 +24,13 @@ $settings['install_profile'] = 'standard';
 $settings['hash_salt'] = 'nCZ3_LdhMkzH7MidhZ3Ac4sUyIbQP2FS9upOUbppzT9EtWp_gUmR8KZffhwm8rjmTr08oWLhjQ';
 $settings['update_free_access'] = FALSE;
 
-// Proxy settings.
-# $settings['proxy_server'] = '';
-# $settings['proxy_port'] = 8080;
-# $settings['proxy_username'] = '';
-# $settings['proxy_password'] = '';
-# $settings['proxy_user_agent'] = '';
-# $settings['proxy_exceptions'] = array('127.0.0.1', 'localhost');
-# $settings['reverse_proxy'] = TRUE;
-# $settings['reverse_proxy_addresses'] = array('a.b.c.d', ...);
-# $settings['reverse_proxy_header'] = 'HTTP_X_CLUSTER_CLIENT_IP';
+// Reverse proxy settings.
+$settings['reverse_proxy'] = TRUE;
+$settings['reverse_proxy_addresses'] = array('10.0.1.60');
+$settings['reverse_proxy_header'] = 'X-Forwarded-For';
 
 // Caching settings.
-# $settings['omit_vary_cookie'] = TRUE;
+$settings['omit_vary_cookie'] = TRUE;
 
 // Class loader.
 /*
@@ -68,7 +62,7 @@ if ($settings['hash_salt']) {
 # $settings['maintenance_theme'] = 'bartik';
 
 // Base URL.
-# $base_url = 'http://www.example.com';  // NO trailing slash!
+$base_url = 'http://www.dramble.dev';  // NO trailing slash!
 
 // PHP Settings.
 # ini_set('pcre.backtrack_limit', 200000);
