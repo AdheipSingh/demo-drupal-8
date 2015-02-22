@@ -7,17 +7,21 @@
 
 // Database.
 $databases['default']['default'] = array(
-  'driver' => 'mysql',
   'database' => 'drupal',
   'username' => 'drupal',
   'password' => 'supersecure',
   'host' => '10.0.1.65',
+  'port' => '3306',
+  'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
+  'driver' => 'mysql',
 );
 
-$config_directories = array();
+$config_directories['active'] = 'sites/default/files/config_5bqTf_8rfM3CIgURZ7cw0Avl-P80BA20N078TuMSsDum1zzJ1CYEDMri_HVHHAKj-uh9O6Xhww/active';
+$config_directories['staging'] = 'sites/default/files/config_5bqTf_8rfM3CIgURZ7cw0Avl-P80BA20N078TuMSsDum1zzJ1CYEDMri_HVHHAKj-uh9O6Xhww/staging';
 
 // General settings.
-$settings['hash_salt'] = '';
+$settings['install_profile'] = 'standard';
+$settings['hash_salt'] = 'nCZ3_LdhMkzH7MidhZ3Ac4sUyIbQP2FS9upOUbppzT9EtWp_gUmR8KZffhwm8rjmTr08oWLhjQ';
 $settings['update_free_access'] = FALSE;
 
 // Proxy settings.
