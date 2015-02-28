@@ -1,0 +1,12 @@
+uuid: 194b65c1-048b-45ad-9800-e17fa459b7c9
+langcode: en
+status: true
+dependencies: {  }
+name: Page
+type: page
+description: 'A page is great for typical site content.'
+help: ''
+new_revision: false
+preview_mode: 1
+display_submitted: false
+third_party_settings: {  }

@@ -1,0 +1,29 @@
+uuid: db73c4f6-0898-4682-bf07-7be3665715bf
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.node.page.body
+    - field.field.node.page.field_images
+    - node.type.page
+  module:
+    - text
+    - user
+id: node.page.default
+targetEntityType: node
+bundle: page
+mode: default
+content:
+  links:
+    weight: 100
+    settings: {  }
+    third_party_settings: {  }
+  body:
+    type: text_default
+    weight: 101
+    settings: {  }
+    third_party_settings: {  }
+    label: hidden
+hidden:
+  field_images: true
+third_party_settings: {  }

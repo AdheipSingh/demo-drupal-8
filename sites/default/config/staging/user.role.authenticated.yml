@@ -1,0 +1,11 @@
+uuid: fb9f8bfd-fd21-4765-9009-9adcbb1351c7
+langcode: en
+status: true
+dependencies: {  }
+id: authenticated
+label: 'Authenticated user'
+weight: 1
+permissions:
+  - 'use text format plain_text'
+  - 'access content'
+  - 'use text format full_html'
