@@ -1,0 +1,27 @@
+uuid: a7cb5247-e5de-43d7-9d0f-1541c8829c01
+langcode: en
+status: true
+dependencies:
+  config:
+    - system.menu.main
+  module:
+    - system
+  theme:
+    - bartik
+id: mainnavigation
+theme: bartik
+region: primary_menu
+weight: -2
+provider: null
+plugin: 'system_menu_block:main'
+settings:
+  id: 'system_menu_block:main'
+  label: 'Main navigation'
+  provider: system
+  label_display: '0'
+  cache:
+    max_age: -1
+    contexts: {  }
+  level: 1
+  depth: 0
+visibility: {  }
