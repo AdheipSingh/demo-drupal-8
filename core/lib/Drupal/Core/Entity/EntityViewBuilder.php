@@ -169,6 +169,8 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
       // Collect cache defaults for this entity.
       '#cache' => array(
         'tags' => Cache::mergeTags($this->getCacheTags(), $entity->getCacheTags()),
+        'contexts' => $entity->getCacheContexts(),
+        'max-age' => $entity->getCacheMaxAge(),
       ),
     );
 
@@ -181,13 +183,6 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
           $this->entityTypeId,
           $entity->id(),
           $view_mode,
-        ),
-        'contexts' => array(
-          'theme',
-          'user.roles',
-          // @todo Move this out of here and into field formatters that depend
-          //       on the timezone. Blocked on https://drupal.org/node/2099137.
-          'timezone',
         ),
         'bin' => $this->cacheBin,
       );

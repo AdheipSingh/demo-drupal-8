@@ -70,8 +70,6 @@ const REGIONS_ALL = 'all';
  * Implements hook_help().
  */
 function system_help($route_name, RouteMatchInterface $route_match) {
-  global $base_url;
-
   switch ($route_name) {
     case 'help.page.system':
       $output = '';
@@ -166,6 +164,9 @@ function system_theme() {
     // templates in core/modules/system/templates are picked up.
     'block__system_branding_block' => array(
       'render element' => 'elements',
+      'base hook' => 'block',
+    ),
+    'block__system_messages_block' => array(
       'base hook' => 'block',
     ),
     'block__system_menu_block' => array(
@@ -312,13 +313,6 @@ function system_theme_suggestions_field(array $variables) {
   $suggestions[] = 'field__' . $element['#entity_type'] . '__' . $element['#field_name'] . '__' . $element['#bundle'];
 
   return $suggestions;
-}
-
-/**
- * Menu item access callback - only installed themes can be accessed.
- */
-function _system_themes_access($theme) {
-  return \Drupal::currentUser()->hasPermission('administer themes') && drupal_theme_access($theme);
 }
 
 /**
@@ -521,7 +515,7 @@ function system_filetransfer_info() {
  * Implements hook_page_attachments().
  *
  * @see template_preprocess_maintenance_page()
- * @see \Drupal\system\Controller\SystemController::setLinkActiveClass()
+ * @see \Drupal\Core\EventSubscriber\ActiveLinkResponseFilter
  */
 function system_page_attachments(array &$page) {
   // Ensure the same CSS is loaded in template_preprocess_maintenance_page().
@@ -602,24 +596,13 @@ function system_page_attachments(array &$page) {
 
   // Handle setting the "active" class on links by:
   // - loading the active-link library if the current user is authenticated;
-  // - applying a post-render cache callback if the current user is anonymous.
+  // - applying a response filter if the current user is anonymous.
   // @see l()
   // @see \Drupal\Core\Utility\LinkGenerator::generate()
   // @see template_preprocess_links()
-  // @see \Drupal\system\Controller\SystemController::setLinkActiveClass
+  // @see \Drupal\Core\EventSubscriber\ActiveLinkResponseFilter
   if (\Drupal::currentUser()->isAuthenticated()) {
     $page['#attached']['library'][] = 'core/drupal.active-link';
-  }
-  else {
-    $page['#post_render_cache']['\Drupal\system\Controller\SystemController::setLinkActiveClass'] = array(
-      // Collect the current state that determines whether a link is active.
-      array(
-        'path' => \Drupal::routeMatch()->getRouteName() ? Url::fromRouteMatch(\Drupal::routeMatch())->getInternalPath() : '',
-        'front' => \Drupal::service('path.matcher')->isFrontPage(),
-        'language' => \Drupal::languageManager()->getCurrentLanguage(LanguageInterface::TYPE_URL)->getId(),
-        'query' => \Drupal::request()->query->all(),
-      )
-    );
   }
 }
 
@@ -733,7 +716,7 @@ function system_user_login(UserInterface $account) {
   $config = \Drupal::config('system.date');
   // If the user has a NULL time zone, notify them to set a time zone.
   if (!$account->getTimezone() && $config->get('timezone.user.configurable') && $config->get('timezone.user.warn')) {
-    drupal_set_message(t('Configure your <a href="@user-edit">account time zone setting</a>.', array('@user-edit' => $account->url('edit-form', array('query' => drupal_get_destination(), 'fragment' => 'edit-timezone')))));
+    drupal_set_message(t('Configure your <a href="@user-edit">account time zone setting</a>.', array('@user-edit' => $account->url('edit-form', array('query' => \Drupal::destination()->getAsArray(), 'fragment' => 'edit-timezone')))));
   }
 }
 
@@ -853,19 +836,32 @@ function system_check_directory($form_element, FormStateInterface $form_state) {
  *   array is returned.
  *
  * @see system_rebuild_module_data()
- * @see system_rebuild_theme_data()
+ * @see \Drupal\Core\Extension\ThemeHandlerInterface::rebuildThemeData()
  */
 function system_get_info($type, $name = NULL) {
-  $info = array();
   if ($type == 'module') {
-    $data = system_rebuild_module_data();
-    foreach (\Drupal::moduleHandler()->getModuleList() as $module => $filename) {
-      if (isset($data[$module])) {
-        $info[$module] = $data[$module]->info;
+    $info = &drupal_static(__FUNCTION__);
+    if (!isset($info)) {
+      if ($cache = \Drupal::cache()->get('system.module.info')) {
+        $info = $cache->data;
+      }
+      else {
+        $data = system_rebuild_module_data();
+        foreach (\Drupal::moduleHandler()->getModuleList() as $module => $filename) {
+          if (isset($data[$module])) {
+            $info[$module] = $data[$module]->info;
+          }
+        }
+        // Store the module information in cache. This cache is cleared by
+        // calling system_rebuild_module_data(), for example, when listing
+        // modules, (un)installing modules, importing configuration, updating
+        // the site and when flushing all the caches.
+        \Drupal::cache()->set('system.module.info', $info);
       }
     }
   }
   else {
+    $info = array();
     $list = system_list($type);
     foreach ($list as $shortname => $item) {
       if (!empty($item->status)) {
@@ -1003,24 +999,14 @@ function system_rebuild_module_data() {
     $modules = \Drupal::moduleHandler()->buildModuleDependencies($modules);
     $modules_cache = $modules;
 
-    // Store filenames to allow system_list() and drupal_get_filename() to
-    // retrieve them without having to rebuild or scan the filesystem.
+    // Store filenames to allow drupal_get_filename() to retrieve them without
+    // having to rebuild or scan the filesystem.
     \Drupal::state()->set('system.module.files', $files);
+    // Clear the module info cache.
+    \Drupal::cache()->delete('system.module.info');
+    drupal_static_reset('system_get_info');
   }
   return $modules_cache;
-}
-
-/**
- * Rebuild, save, and return data about all currently available themes.
- *
- * @return \Drupal\Core\Extension\Extension[]
- *   Array of all available themes and their data.
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Drupal::service('theme_handler')->rebuildThemeData().
- */
-function system_rebuild_theme_data() {
-  return \Drupal::service('theme_handler')->rebuildThemeData();
 }
 
 /**

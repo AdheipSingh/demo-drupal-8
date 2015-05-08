@@ -8,6 +8,7 @@
 namespace Drupal\comment\Tests;
 
 use Drupal\comment\CommentInterface;
+use Drupal\comment\Entity\Comment;
 use Drupal\comment\Entity\CommentType;
 use Drupal\comment\Plugin\Field\FieldType\CommentItemInterface;
 use Drupal\field\Entity\FieldConfig;
@@ -15,6 +16,7 @@ use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\field_ui\Tests\FieldUiTestTrait;
 use Drupal\simpletest\WebTestBase;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\user\RoleInterface;
 
 /**
  * Tests commenting on a test entity.
@@ -75,12 +77,12 @@ class CommentNonNodeTest extends WebTestBase {
     ));
 
     // Enable anonymous and authenticated user comments.
-    user_role_grant_permissions(DRUPAL_ANONYMOUS_RID, array(
+    user_role_grant_permissions(RoleInterface::ANONYMOUS_ID, array(
       'access comments',
       'post comments',
       'skip comment approval',
     ));
-    user_role_grant_permissions(DRUPAL_AUTHENTICATED_RID, array(
+    user_role_grant_permissions(RoleInterface::AUTHENTICATED_ID, array(
       'access comments',
       'post comments',
       'skip comment approval',
@@ -163,7 +165,7 @@ class CommentNonNodeTest extends WebTestBase {
     }
 
     if (isset($match[1])) {
-      return entity_load('comment', $match[1]);
+      return Comment::load($match[1]);
     }
   }
 
@@ -172,7 +174,7 @@ class CommentNonNodeTest extends WebTestBase {
    *
    * @param \Drupal\comment\CommentInterface $comment
    *   The comment object.
-   * @param boolean $reply
+   * @param bool $reply
    *   Boolean indicating whether the comment is a reply to another comment.
    *
    * @return boolean
@@ -210,7 +212,7 @@ class CommentNonNodeTest extends WebTestBase {
    *   Comment to perform operation on.
    * @param string $operation
    *   Operation to perform.
-   * @param boolean $aproval
+   * @param bool $approval
    *   Operation is found on approval page.
    */
   function performCommentOperation($comment, $operation, $approval = FALSE) {
@@ -263,8 +265,8 @@ class CommentNonNodeTest extends WebTestBase {
     // Test that field to change cardinality is not available.
     $this->drupalGet('entity_test/structure/entity_test/fields/entity_test.entity_test.comment/storage');
     $this->assertResponse(200);
-    $this->assertNoField('field_storage[cardinality_number]');
-    $this->assertNoField('field_storage[cardinality]');
+    $this->assertNoField('cardinality_number');
+    $this->assertNoField('cardinality');
 
     $this->drupalLogin($this->adminUser);
 
@@ -328,7 +330,7 @@ class CommentNonNodeTest extends WebTestBase {
     $this->drupalLogout();
 
     // Deny anonymous users access to comments.
-    user_role_change_permissions(DRUPAL_ANONYMOUS_RID, array(
+    user_role_change_permissions(RoleInterface::ANONYMOUS_ID, array(
       'access comments' => FALSE,
       'post comments' => FALSE,
       'skip comment approval' => FALSE,
@@ -346,7 +348,7 @@ class CommentNonNodeTest extends WebTestBase {
     $this->assertNoFieldByName('subject[0][value]', '', 'Subject field not found.');
     $this->assertNoFieldByName('comment_body[0][value]', '', 'Comment field not found.');
 
-    user_role_change_permissions(DRUPAL_ANONYMOUS_RID, array(
+    user_role_change_permissions(RoleInterface::ANONYMOUS_ID, array(
       'access comments' => TRUE,
       'post comments' => FALSE,
       'view test entity' => TRUE,
@@ -362,7 +364,7 @@ class CommentNonNodeTest extends WebTestBase {
     // Test the combination of anonymous users being able to post, but not view
     // comments, to ensure that access to post comments doesn't grant access to
     // view them.
-    user_role_change_permissions(DRUPAL_ANONYMOUS_RID, array(
+    user_role_change_permissions(RoleInterface::ANONYMOUS_ID, array(
       'access comments' => FALSE,
       'post comments' => TRUE,
       'skip comment approval' => TRUE,
@@ -391,14 +393,14 @@ class CommentNonNodeTest extends WebTestBase {
     // Test comment option change in field settings.
     $edit = array(
       'default_value_input[comment][0][status]' => CommentItemInterface::CLOSED,
-      'field[settings][anonymous]' => COMMENT_ANONYMOUS_MAY_CONTACT,
+      'settings[anonymous]' => COMMENT_ANONYMOUS_MAY_CONTACT,
     );
     $this->drupalPostForm(NULL, $edit, t('Save settings'));
     $this->drupalGet('entity_test/structure/entity_test/fields/entity_test.entity_test.comment');
     $this->assertNoFieldChecked('edit-default-value-input-comment-0-status-0');
     $this->assertFieldChecked('edit-default-value-input-comment-0-status-1');
     $this->assertNoFieldChecked('edit-default-value-input-comment-0-status-2');
-    $this->assertFieldByName('field[settings][anonymous]', COMMENT_ANONYMOUS_MAY_CONTACT);
+    $this->assertFieldByName('settings[anonymous]', COMMENT_ANONYMOUS_MAY_CONTACT);
 
     // Add a new comment-type.
     $bundle = CommentType::create(array(
@@ -411,7 +413,7 @@ class CommentNonNodeTest extends WebTestBase {
 
     // Add a new comment field.
     $storage_edit = array(
-      'field_storage[settings][comment_type]' => 'foobar',
+      'settings[comment_type]' => 'foobar',
     );
     $this->fieldUIAddNewField('entity_test/structure/entity_test', 'foobar', 'Foobar', 'comment', $storage_edit);
 

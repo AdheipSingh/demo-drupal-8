@@ -45,6 +45,7 @@ use Drupal\taxonomy\TermInterface;
  *   },
  *   bundle_entity_type = "taxonomy_vocabulary",
  *   field_ui_base_route = "entity.taxonomy_vocabulary.overview_form",
+ *   common_reference_target = TRUE,
  *   links = {
  *     "canonical" = "/taxonomy/term/{taxonomy_term}",
  *     "delete-form" = "/taxonomy/term/{taxonomy_term}/delete",
@@ -121,6 +122,7 @@ class Term extends ContentEntityBase implements TermInterface {
     $fields['langcode'] = BaseFieldDefinition::create('language')
       ->setLabel(t('Language'))
       ->setDescription(t('The term language code.'))
+      ->setTranslatable(TRUE)
       ->setDisplayOptions('view', array(
         'type' => 'hidden',
       ))

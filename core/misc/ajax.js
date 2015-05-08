@@ -27,7 +27,7 @@
         if (typeof element_settings.selector === 'undefined') {
           element_settings.selector = '#' + base;
         }
-        $(element_settings.selector).once('drupal-ajax', function () {
+        $(element_settings.selector).once('drupal-ajax').each(function () {
           element_settings.element = this;
           Drupal.ajax[element_settings.selector] = new Drupal.ajax(base, this, element_settings);
         });
@@ -41,7 +41,7 @@
       }
 
       // Bind Ajax behaviors to all items showing the class.
-      $('.use-ajax').once('ajax', function () {
+      $('.use-ajax').once('ajax').each(function () {
         var element_settings = {};
         // Clicked links look better with the throbber than the progress bar.
         element_settings.progress = {'type': 'throbber'};
@@ -59,7 +59,7 @@
       });
 
       // This class means to submit the form to the action using Ajax.
-      $('.use-ajax-submit').once('ajax', function () {
+      $('.use-ajax-submit').once('ajax').each(function () {
         var element_settings = {};
 
         // Ajax submits specified in this manner automatically submit to the
@@ -84,7 +84,11 @@
    */
   Drupal.AjaxError = function (xmlhttp, uri) {
 
-    var statusCode, statusText, pathText, responseText, readyStateText;
+    var statusCode;
+    var statusText;
+    var pathText;
+    var responseText;
+    var readyStateText;
     if (xmlhttp.status) {
       statusCode = "\n" + Drupal.t("An AJAX HTTP error occurred.") + "\n" + Drupal.t("HTTP Result Code: !status", {'!status': xmlhttp.status});
     }
@@ -100,7 +104,9 @@
     try {
       statusText = "\n" + Drupal.t("StatusText: !statusText", {'!statusText': $.trim(xmlhttp.statusText)});
     }
-    catch (e) {}
+    catch (e) {
+      // empty
+    }
 
     responseText = '';
     // Again, we don't have a way to know for sure whether accessing
@@ -108,7 +114,9 @@
     try {
       responseText = "\n" + Drupal.t("ResponseText: !responseText", {'!responseText': $.trim(xmlhttp.responseText)});
     }
-    catch (e) {}
+    catch (e) {
+      // empty
+    }
 
     // Make the responseText more readable by stripping HTML tags and newlines.
     responseText = responseText.replace(/<("[^"]*"|'[^']*'|[^'">])*>/gi, "");
@@ -372,10 +380,11 @@
     }
 
     // Prevent duplicate HTML ids in the returned markup.
-    // @see drupal_html_id()
+    // @see \Drupal\Component\Utility\Html::getUniqueId()
     var ids = document.querySelectorAll('[id]');
     var ajaxHtmlIds = [];
-    for (var i = 0, il = ids.length; i < il; i++) {
+    var il = ids.length;
+    for (var i = 0; i < il; i++) {
       ajaxHtmlIds.push(ids[i].id);
     }
     // Join IDs to minimize request size.
@@ -436,7 +445,7 @@
     // interaction while the Ajax request is in progress. ajax.ajaxing prevents
     // the element from triggering a new request, but does not prevent the user
     // from changing its value.
-    $(this.element).addClass('progress-disabled').prop('disabled', true);
+    $(this.element).prop('disabled', true);
 
     // Insert progressbar or throbber.
     if (this.progress.type === 'bar') {
@@ -475,7 +484,7 @@
     if (this.progress.object) {
       this.progress.object.stopMonitoring();
     }
-    $(this.element).removeClass('progress-disabled').prop('disabled', false);
+    $(this.element).prop('disabled', false);
 
     for (var i in response) {
       if (response.hasOwnProperty(i) && response[i].command && this.commands[response[i].command]) {
@@ -538,7 +547,7 @@
     // Undo hide.
     $(this.wrapper).show();
     // Re-enable the element.
-    $(this.element).removeClass('progress-disabled').prop('disabled', false);
+    $(this.element).prop('disabled', false);
     // Reattach behaviors, if they were detached in beforeSerialize().
     if (this.$form) {
       var settings = response.settings || this.settings || drupalSettings;
@@ -727,7 +736,8 @@
       // Add the styles in the normal way.
       $('head').prepend(response.data);
       // Add imports in the styles using the addImport method if available.
-      var match, importMatch = /^@import url\("(.*)"\);$/igm;
+      var match;
+      var importMatch = /^@import url\("(.*)"\);$/igm;
       if (document.styleSheets[0].addImport && importMatch.test(response.data)) {
         importMatch.lastIndex = 0;
         do {

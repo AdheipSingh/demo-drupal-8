@@ -20,20 +20,17 @@ class CommentViewsData extends EntityViewsData {
   public function getViewsData() {
     $data = parent::getViewsData();
 
-    $data['comment']['table']['base']['help'] = t('Comments are responses to content.');
-    $data['comment']['table']['base']['access query tag'] = 'comment_access';
+    $data['comment_field_data']['table']['base']['help'] = t('Comments are responses to content.');
+    $data['comment_field_data']['table']['base']['access query tag'] = 'comment_access';
 
-    $data['comment']['table']['wizard_id'] = 'comment';
+    $data['comment_field_data']['table']['wizard_id'] = 'comment';
 
     $data['comment_field_data']['subject']['title'] = t('Title');
     $data['comment_field_data']['subject']['help'] = t('The title of the comment.');
-    $data['comment_field_data']['subject']['field']['id'] = 'comment';
-
-    $data['comment']['cid']['field']['id'] = 'comment';
 
     $data['comment_field_data']['name']['title'] = t('Author');
     $data['comment_field_data']['name']['help'] = t("The name of the comment's author. Can be rendered as a link to the author's homepage.");
-    $data['comment_field_data']['name']['field']['id'] = 'comment_username';
+    $data['comment_field_data']['name']['field']['default_formatter'] = 'comment_username';
 
     $data['comment_field_data']['homepage']['title'] = t("Author's website");
     $data['comment_field_data']['homepage']['help'] = t("The website address of the comment's author. Can be rendered as a link. Will be empty if the author is a registered user.");
@@ -102,9 +99,6 @@ class CommentViewsData extends EntityViewsData {
 
     $data['comment_field_data']['status']['title'] = t('Approved status');
     $data['comment_field_data']['status']['help'] = t('Whether the comment is approved (or still in the moderation queue).');
-    $data['comment_field_data']['status']['field']['output formats'] = array(
-      'approved-not-approved' => array(t('Approved'), t('Not Approved')),
-    );
     $data['comment_field_data']['status']['filter']['label'] = t('Approved comment status');
     $data['comment_field_data']['status']['filter']['type'] = 'yes-no';
 
@@ -161,23 +155,6 @@ class CommentViewsData extends EntityViewsData {
     unset($data['comment_field_data']['thread']['filter']);
     unset($data['comment_field_data']['thread']['argument']);
 
-    $data['comment_field_data']['field_name'] = array(
-      'title' => t('Comment field name'),
-      'help' => t('The Field name from which the comment originated.'),
-      'field' => array(
-        'id' => 'standard',
-      ),
-      'filter' => array(
-        'id' => 'string',
-      ),
-      'argument' => array(
-        'id' => 'string',
-      ),
-      'sort' => array(
-        'id' => 'standard',
-      ),
-    );
-
     $entities_types = \Drupal::entityManager()->getDefinitions();
 
     // Provide a relationship for each entity type except comment.
@@ -190,7 +167,7 @@ class CommentViewsData extends EntityViewsData {
           'relationship' => array(
             'title' => $entity_type->getLabel(),
             'help' => t('The @entity_type to which the comment is a reply to.', array('@entity_type' => $entity_type->getLabel())),
-            'base' => $entity_type->getBaseTable(),
+            'base' => $entity_type->getDataTable() ?: $entity_type->getBaseTable(),
             'base field' => $entity_type->getKey('id'),
             'relationship field' => 'entity_id',
             'id' => 'standard',
@@ -212,7 +189,6 @@ class CommentViewsData extends EntityViewsData {
     $data['comment_field_data']['uid']['relationship']['title'] = t('Author');
     $data['comment_field_data']['uid']['relationship']['help'] = t("The User ID of the comment's author.");
     $data['comment_field_data']['uid']['relationship']['label'] = t('author');
-    $data['comment_field_data']['uid']['field']['id'] = 'user';
 
     $data['comment_field_data']['pid']['title'] = t('Parent CID');
     $data['comment_field_data']['pid']['relationship']['title'] = t('Parent comment');
@@ -245,7 +221,7 @@ class CommentViewsData extends EntityViewsData {
       // {comment_entity_statistics} for each field as multiple joins between
       // the same two tables is not supported.
       if (\Drupal::service('comment.manager')->getFields($type)) {
-        $data['comment_entity_statistics']['table']['join'][$entity_type->getBaseTable()] = array(
+        $data['comment_entity_statistics']['table']['join'][$entity_type->getDataTable() ?: $entity_type->getBaseTable()] = array(
           'type' => 'INNER',
           'left_field' => $entity_type->getKey('id'),
           'field' => 'entity_id',

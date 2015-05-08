@@ -7,7 +7,7 @@
 
 namespace Drupal\rest\Tests\Views;
 
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\views\Views;
 use Drupal\views\Tests\Plugin\PluginTestBase;
 use Drupal\views\Tests\ViewTestData;
@@ -283,13 +283,26 @@ class StyleSerializerTest extends PluginTestBase {
       $entities[] = $row->_entity;
     }
 
-    $expected = String::checkPlain($serializer->serialize($entities, 'json'));
+    $expected = SafeMarkup::checkPlain($serializer->serialize($entities, 'json'));
 
     $view->live_preview = TRUE;
 
     $build = $view->preview();
     $rendered_json = $build['#markup'];
     $this->assertEqual($rendered_json, $expected, 'Ensure the previewed json is escaped.');
+  }
+
+  /**
+   * Tests the views interface for rest export displays.
+   */
+  public function testSerializerViewsUI() {
+    $this->drupalLogin($this->adminUser);
+    // Click the "Update preview button".
+    $this->drupalPostForm('admin/structure/views/view/test_serializer_display_field/edit/rest_export_1', $edit = array(), t('Update preview'));
+    $this->assertResponse(200);
+    // Check if we receive the expected result.
+    $result = $this->xpath('//div[@id="views-live-preview"]/pre');
+    $this->assertIdentical($this->drupalGet('test/serialize/field'), (string) $result[0], 'The expected JSON preview output was found.');
   }
 
   /**

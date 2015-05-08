@@ -22,11 +22,11 @@ use Drupal\Tests\UnitTestCase;
 class ThemeHandlerTest extends UnitTestCase {
 
   /**
-   * The mocked route builder indicator.
+   * The mocked route builder.
    *
-   * @var \Drupal\Core\Routing\RouteBuilderIndicatorInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Routing\RouteBuilderInterface|\PHPUnit_Framework_MockObject_MockObject
    */
-  protected $routeBuilderIndicator;
+  protected $routeBuilder;
 
   /**
    * The mocked info parser.
@@ -87,7 +87,7 @@ class ThemeHandlerTest extends UnitTestCase {
   /**
    * The tested theme handler.
    *
-   * @var \Drupal\Core\Extension\ThemeHandler|\Drupal\Tests\Core\Extension\TestThemeHandler
+   * @var \Drupal\Core\Extension\ThemeHandler|\Drupal\Tests\Core\Extension\StubThemeHandler
    */
   protected $themeHandler;
 
@@ -111,15 +111,15 @@ class ThemeHandlerTest extends UnitTestCase {
     $this->infoParser = $this->getMock('Drupal\Core\Extension\InfoParserInterface');
     $this->configInstaller = $this->getMock('Drupal\Core\Config\ConfigInstallerInterface');
     $this->configManager = $this->getMock('Drupal\Core\Config\ConfigManagerInterface');
-    $this->routeBuilderIndicator = $this->getMock('Drupal\Core\Routing\RouteBuilderIndicatorInterface');
+    $this->routeBuilder = $this->getMock('Drupal\Core\Routing\RouteBuilderInterface');
     $this->extensionDiscovery = $this->getMockBuilder('Drupal\Core\Extension\ExtensionDiscovery')
       ->disableOriginalConstructor()
       ->getMock();
-    $this->cssCollectionOptimizer = $this->getMockBuilder('\Drupal\Core\Asset\CssCollectionOptimizer') //\Drupal\Core\Asset\AssetCollectionOptimizerInterface');
+    $this->cssCollectionOptimizer = $this->getMockBuilder('\Drupal\Core\Asset\CssCollectionOptimizer')
       ->disableOriginalConstructor()
       ->getMock();
     $logger = $this->getMock('Psr\Log\LoggerInterface');
-    $this->themeHandler = new TestThemeHandler($this->root, $this->configFactory, $this->moduleHandler, $this->state, $this->infoParser, $logger, $this->cssCollectionOptimizer, $this->configInstaller, $this->configManager, $this->routeBuilderIndicator, $this->extensionDiscovery);
+    $this->themeHandler = new StubThemeHandler($this->root, $this->configFactory, $this->moduleHandler, $this->state, $this->infoParser, $logger, $this->cssCollectionOptimizer, $this->configInstaller, $this->configManager, $this->routeBuilder, $this->extensionDiscovery);
 
     $cache_tags_invalidator = $this->getMock('Drupal\Core\Cache\CacheTagsInvalidatorInterface');
     $this->getContainerWithCacheTagsInvalidator($cache_tags_invalidator);
@@ -330,7 +330,28 @@ class ThemeHandlerTest extends UnitTestCase {
 /**
  * Extends the default theme handler to mock some drupal_ methods.
  */
-class TestThemeHandler extends ThemeHandler {
+class StubThemeHandler extends ThemeHandler {
+
+  /**
+   * Whether the CSS cache was cleared.
+   *
+   * @var bool
+   */
+  protected $clearedCssCache;
+
+  /**
+   * Whether the registry should be rebuilt.
+   *
+   * @var bool
+   */
+  protected $registryRebuild;
+
+  /**
+   * A list of themes keyed by name.
+   *
+   * @var array
+   */
+  protected $systemList;
 
   /**
    * {@inheritdoc}

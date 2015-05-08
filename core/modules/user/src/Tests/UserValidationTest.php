@@ -7,7 +7,7 @@
 
 namespace Drupal\user\Tests;
 
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\Plugin\Field\FieldType\EmailItem;
 use Drupal\Core\Language\Language;
@@ -136,16 +136,8 @@ class UserValidationTest extends KernelTestBase {
     $violations = $user->validate();
     $this->assertEqual(count($violations), 1, 'E-mail addresses may not be removed');
     $this->assertEqual($violations[0]->getPropertyPath(), 'mail');
-    $this->assertEqual($violations[0]->getMessage(), t('!name field is required.', array('!name' => String::placeholder($user->getFieldDefinition('mail')->getLabel()))));
+    $this->assertEqual($violations[0]->getMessage(), t('!name field is required.', array('!name' => SafeMarkup::placeholder($user->getFieldDefinition('mail')->getLabel()))));
     $user->set('mail', 'someone@example.com');
-
-    $user->set('signature', $this->randomString(256));
-    $this->assertLengthViolation($user, 'signature', 255);
-    $user->set('signature', NULL);
-
-    $user->set('signature_format', $this->randomString(32));
-    $this->assertAllowedValuesViolation($user, 'signature_format');
-    $user->set('signature_format', NULL);
 
     $user->set('timezone', $this->randomString(33));
     $this->assertLengthViolation($user, 'timezone', 32, 2, 1);

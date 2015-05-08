@@ -10,7 +10,7 @@ namespace Drupal\field_ui\Form;
 use Drupal\Component\Plugin\Factory\DefaultFactory;
 use Drupal\Component\Plugin\PluginManagerBase;
 use Drupal\Component\Utility\Html;
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Core\Entity\EntityForm;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityWithPluginCollectionInterface;
@@ -26,14 +26,6 @@ use Drupal\field_ui\FieldUI;
  * Base class for EntityDisplay edit forms.
  */
 abstract class EntityDisplayFormBase extends EntityForm {
-
-  /**
-   * The name of the entity type which provides bundles for the entity type
-   * defined above.
-   *
-   * @var string
-   */
-  protected $bundleEntityTypeId;
 
   /**
    * The display context. Either 'view' or 'form'.
@@ -82,16 +74,7 @@ abstract class EntityDisplayFormBase extends EntityForm {
   public function getEntityFromRouteMatch(RouteMatchInterface $route_match, $entity_type_id) {
     $route_parameters = $route_match->getParameters()->all();
 
-    if (isset($route_parameters['bundle'])) {
-      $bundle = $route_parameters['bundle'];
-    }
-    else {
-      $target_entity_type = $this->entityManager->getDefinition($route_parameters['entity_type_id']);
-      $this->bundleEntityTypeId = $target_entity_type->getBundleEntityType();
-      $bundle = $route_parameters[$this->bundleEntityTypeId]->id();
-    }
-
-    return $this->getEntityDisplay($route_parameters['entity_type_id'], $bundle, $route_parameters[$this->displayContext . '_mode_name']);
+    return $this->getEntityDisplay($route_parameters['entity_type_id'], $route_parameters['bundle'], $route_parameters[$this->displayContext . '_mode_name']);
   }
 
   /**
@@ -307,7 +290,7 @@ abstract class EntityDisplayFormBase extends EntityForm {
         'defaultPlugin' => $this->getDefaultPlugin($field_definition->getType()),
       ),
       'human_name' => array(
-        '#markup' => String::checkPlain($label),
+        '#markup' => SafeMarkup::checkPlain($label),
       ),
       'weight' => array(
         '#type' => 'textfield',

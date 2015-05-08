@@ -9,6 +9,7 @@ namespace Drupal\user\Tests;
 
 use Drupal\simpletest\WebTestBase;
 use Drupal\Core\Password\PhpassHashedPassword;
+use Drupal\user\Entity\User;
 
 /**
  * Ensure that login works as expected.
@@ -16,10 +17,16 @@ use Drupal\Core\Password\PhpassHashedPassword;
  * @group user
  */
 class UserLoginTest extends WebTestBase {
+
   /**
    * Tests login with destination.
    */
-  function testLoginDestination() {
+  function testLoginCacheTagsAndDestination() {
+    $this->drupalGet('user/login');
+    // The user login form says "Enter your <site name> username.", hence it
+    // depends on config:system.site, and its cache tags should be present.
+    $this->assertCacheTag('config:system.site');
+
     $user = $this->drupalCreateUser(array());
     $this->drupalGet('user/login', array('query' => array('destination' => 'foo')));
     $edit = array('name' => $user->getUserName(), 'pass' => $user->pass_raw);
@@ -120,7 +127,8 @@ class UserLoginTest extends WebTestBase {
     $this->drupalLogin($account);
     $this->drupalLogout();
     // Load the stored user. The password hash should reflect $default_count_log2.
-    $account = user_load($account->id());
+    $user_storage = $this->container->get('entity.manager')->getStorage('user');
+    $account = User::load($account->id());
     $this->assertIdentical($password_hasher->getCountLog2($account->getPassword()), $default_count_log2);
 
     // Change the required number of iterations by loading a test-module
@@ -133,7 +141,8 @@ class UserLoginTest extends WebTestBase {
     $account->pass_raw = $password;
     $this->drupalLogin($account);
     // Load the stored user, which should have a different password hash now.
-    $account = user_load($account->id(), TRUE);
+    $user_storage->resetCache(array($account->id()));
+    $account = $user_storage->load($account->id());
     $this->assertIdentical($password_hasher->getCountLog2($account->getPassword()), $overridden_count_log2);
   }
 

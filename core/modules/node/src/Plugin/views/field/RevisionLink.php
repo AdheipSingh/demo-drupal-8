@@ -29,7 +29,7 @@ class RevisionLink extends Link {
   public function init(ViewExecutable $view, DisplayPluginBase $display, array &$options = NULL) {
     parent::init($view, $display, $options);
 
-    $this->additional_fields['node_vid'] = array('table' => 'node_revision', 'field' => 'vid');
+    $this->additional_fields['node_vid'] = array('table' => 'node_field_revision', 'field' => 'vid');
   }
 
   /**
@@ -66,7 +66,7 @@ class RevisionLink extends Link {
 
     $this->options['alter']['make_link'] = TRUE;
     $this->options['alter']['url'] = $url;
-    $this->options['alter']['query'] = drupal_get_destination();
+    $this->options['alter']['query'] = $this->getDestinationArray();
 
     return !empty($this->options['text']) ? $this->options['text'] : $this->t('View');
   }

@@ -29,7 +29,9 @@ use Drupal\Core\TypedData\DataReferenceDefinition;
  *   id = "entity_reference",
  *   label = @Translation("Entity reference"),
  *   description = @Translation("An entity field containing an entity reference."),
+ *   category = @Translation("Reference"),
  *   no_ui = TRUE,
+ *   default_formatter = "entity_reference_label",
  *   list_class = "\Drupal\Core\Field\EntityReferenceFieldItemList",
  *   constraints = {"ValidReference" = {}}
  * )
@@ -58,7 +60,8 @@ class EntityReferenceItem extends FieldItemBase {
    */
   public static function defaultFieldSettings() {
     return array(
-      'handler' => 'default',
+      'handler' => 'default:' . (\Drupal::moduleHandler()->moduleExists('node') ? 'node' : 'user'),
+      'handler_settings' => array(),
     ) + parent::defaultFieldSettings();
   }
 
@@ -89,12 +92,17 @@ class EntityReferenceItem extends FieldItemBase {
       // The entity object is computed out of the entity ID.
       ->setComputed(TRUE)
       ->setReadOnly(FALSE)
-      ->setTargetDefinition(EntityDataDefinition::create($settings['target_type']));
+      ->setTargetDefinition(EntityDataDefinition::create($settings['target_type']))
+      ->addConstraint('EntityType', $settings['target_type']);
 
     if (isset($settings['target_bundle'])) {
-      $properties['entity']->getTargetDefinition()->addConstraint('Bundle', $settings['target_bundle']);
+      $properties['entity']->addConstraint('Bundle', $settings['target_bundle']);
+      // Set any further bundle constraints on the target definition as well,
+      // such that it can derive more special data types if possible. For
+      // example, "entity:node:page" instead of "entity:node".
+      $properties['entity']->getTargetDefinition()
+        ->addConstraint('Bundle', $settings['target_bundle']);
     }
-
     return $properties;
   }
 

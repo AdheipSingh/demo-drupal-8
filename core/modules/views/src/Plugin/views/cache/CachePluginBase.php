@@ -8,6 +8,7 @@
 namespace Drupal\views\Plugin\views\cache;
 
 use Drupal\Core\Cache\Cache;
+use Drupal\Core\Render\RenderCacheInterface;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\views\Plugin\views\PluginBase;
 use Drupal\Core\Database\Query\Select;
@@ -74,11 +75,18 @@ abstract class CachePluginBase extends PluginBase {
   protected $outputKey;
 
   /**
-   * The renderer service.
+   * The HTML renderer.
    *
    * @var \Drupal\Core\Render\RendererInterface
    */
   protected $renderer;
+
+  /**
+   * The render cache service.
+   *
+   * @var \Drupal\Core\Render\RenderCacheInterface
+   */
+  protected $renderCache;
 
   /**
    * Constructs a CachePluginBase object.
@@ -90,12 +98,15 @@ abstract class CachePluginBase extends PluginBase {
    * @param mixed $plugin_definition
    *   The plugin implementation definition.
    * @param \Drupal\Core\Render\RendererInterface $renderer
-   *   The renderer service.
+   *   The HTML renderer.
+   * @param \Drupal\Core\Render\RenderCacheInterface $render_cache
+   *   The render cache service.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, RendererInterface $renderer) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, RendererInterface $renderer, RenderCacheInterface $render_cache) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
     $this->renderer = $renderer;
+    $this->renderCache = $render_cache;
   }
 
   /**
@@ -106,7 +117,8 @@ abstract class CachePluginBase extends PluginBase {
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $container->get('renderer')
+      $container->get('renderer'),
+      $container->get('render_cache')
     );
   }
 
@@ -181,9 +193,17 @@ abstract class CachePluginBase extends PluginBase {
         \Drupal::cache($this->resultsBin)->set($this->generateResultsKey(), $data, $this->cacheSetExpire($type), $this->getCacheTags());
         break;
       case 'output':
-        $this->renderer->render($this->view->display_handler->output);
-        $this->storage = $this->renderer->getCacheableRenderArray($this->view->display_handler->output);
-        \Drupal::cache($this->outputBin)->set($this->generateOutputKey(), $this->storage, $this->cacheSetExpire($type), $this->getCacheTags());
+        // Make a copy of the output so it is not modified. If we render the
+        // display output directly an empty string will be returned when the
+        // view is actually rendered. If we try to set '#printed' to FALSE there
+        // are problems with asset bubbling.
+        $output = $this->view->display_handler->output;
+        $this->renderer->render($output);
+        // Also assign the cacheable render array back to the display handler so
+        // that is used to render the view for this request and rendering does
+        // not happen twice.
+        $this->storage = $this->view->display_handler->output = $this->renderCache->getCacheableRenderArray($output);
+        \Drupal::cache($this->outputBin)->set($this->generateOutputKey(), $this->storage, $this->cacheSetExpire($type), Cache::mergeTags($this->storage['#cache']['tags'], ['rendered']));
         break;
     }
   }
@@ -231,9 +251,6 @@ abstract class CachePluginBase extends PluginBase {
 
   /**
    * Clear out cached data for a view.
-   *
-   * We're just going to nuke anything related to the view, regardless of display,
-   * to be sure that we catch everything. Maybe that's a bad idea.
    */
   public function cacheFlush() {
     Cache::invalidateTags($this->view->storage->getCacheTags());
@@ -282,22 +299,24 @@ abstract class CachePluginBase extends PluginBase {
         if ($build_info[$index] instanceof Select) {
           $query = clone $build_info[$index];
           $query->preExecute();
-          $build_info[$index] = (string)$query;
+          $build_info[$index] = array(
+            'query' => (string)$query,
+            'arguments' => $query->getArguments(),
+          );
         }
       }
-      $user = \Drupal::currentUser();
-      $key_data = array(
+
+      $key_data = [
         'build_info' => $build_info,
-        'roles' => $user->getRoles(),
-        'super-user' => $user->id() == 1, // special caching for super user.
-        'langcode' => \Drupal::languageManager()->getCurrentLanguage()->getId(),
-        'base_url' => $GLOBALS['base_url'],
-      );
-      foreach (array('exposed_info', 'page', 'sort', 'order', 'items_per_page', 'offset') as $key) {
-        if ($this->view->getRequest()->query->has($key)) {
-          $key_data[$key] = $this->view->getRequest()->query->get($key);
-        }
-      }
+      ];
+      // @todo https://www.drupal.org/node/2433591 might solve it to not require
+      //    the pager information here.
+      $key_data['pager'] = [
+        'page' => $this->view->getCurrentPage(),
+        'items_per_page' => $this->view->getItemsPerPage(),
+        'offset' => $this->view->getOffset(),
+      ];
+      $key_data += \Drupal::service('cache_contexts_manager')->convertTokensToKeys($this->displayHandler->getCacheMetadata()['contexts']);
 
       $this->resultsKey = $this->view->storage->id() . ':' . $this->displayHandler->display['id'] . ':results:' . hash('sha256', serialize($key_data));
     }
@@ -335,17 +354,20 @@ abstract class CachePluginBase extends PluginBase {
    * @return string[]
    *   An array of cache tags based on the current view.
    */
-  protected function getCacheTags() {
+  public function getCacheTags() {
     $tags = $this->view->storage->getCacheTags();
 
+    // The list cache tags for the entity types listed in this view.
     $entity_information = $this->view->query->getEntityTableInfo();
 
     if (!empty($entity_information)) {
       // Add the list cache tags for each entity type used by this view.
-      foreach (array_keys($entity_information) as $entity_type) {
-        $tags = Cache::mergeTags($tags, \Drupal::entityManager()->getDefinition($entity_type)->getListCacheTags());
+      foreach ($entity_information as $table => $metadata) {
+        $tags = Cache::mergeTags($tags, \Drupal::entityManager()->getDefinition($metadata['entity_type'])->getListCacheTags());
       }
     }
+
+    $tags = Cache::mergeTags($tags, $this->view->getQuery()->getCacheTags());
 
     return $tags;
   }

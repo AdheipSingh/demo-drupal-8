@@ -7,7 +7,7 @@
 
 namespace Drupal\Core\Utility;
 
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\PathProcessor\OutboundPathProcessorInterface;
@@ -68,7 +68,7 @@ class UnroutedUrlAssembler implements UnroutedUrlAssemblerInterface {
       // UrlHelper::isExternal() only returns true for safe protocols.
       return $this->buildExternalUrl($uri, $options);
     }
-    throw new \InvalidArgumentException(String::format('The URI "@uri" is invalid. You must use a valid URI scheme. Use base: for a path, e.g., to a Drupal file that needs the base path. Do not use this for internal paths controlled by Drupal.', ['@uri' => $uri]));
+    throw new \InvalidArgumentException(SafeMarkup::format('The URI "@uri" is invalid. You must use a valid URI scheme. Use base: for a path, e.g., to a Drupal file that needs the base path. Do not use this for internal paths controlled by Drupal.', ['@uri' => $uri]));
   }
 
   /**
@@ -112,6 +112,11 @@ class UnroutedUrlAssembler implements UnroutedUrlAssemblerInterface {
     // @todo Consider using a class constant for this in
     //   https://www.drupal.org/node/2417459
     $uri = substr($uri, 5);
+
+    // Strip leading slashes from internal paths to prevent them becoming
+    // external URLs without protocol. /example.com should not be turned into
+    // //example.com.
+    $uri = ltrim($uri, '/');
 
     // Allow (outbound) path processing, if needed. A valid use case is the path
     // alias overview form:

@@ -81,7 +81,7 @@ class Drupal {
   /**
    * The current system version.
    */
-  const VERSION = '8.0.0-dev';
+  const VERSION = '8.0.0-beta10';
 
   /**
    * Core API compatibility.
@@ -665,6 +665,16 @@ class Drupal {
    */
   public static function accessManager() {
     return static::getContainer()->get('access_manager');
+  }
+
+  /**
+   * Returns the redirect destination helper.
+   *
+   * @return \Drupal\Core\Routing\RedirectDestinationInterface
+   *   The redirect destination helper.
+   */
+  public static function destination() {
+    return static::getContainer()->get('redirect.destination');
   }
 
 }

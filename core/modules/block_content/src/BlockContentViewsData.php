@@ -21,12 +21,12 @@ class BlockContentViewsData extends EntityViewsData {
 
     $data = parent::getViewsData();
 
-    $data['block_content']['id']['field']['id'] = 'block_content';
+    $data['block_content_field_data']['id']['field']['id'] = 'field';
 
-    $data['block_content_field_data']['info']['field']['id'] = 'block_content';
+    $data['block_content_field_data']['info']['field']['id'] = 'field';
     $data['block_content_field_data']['info']['field']['link_to_entity default'] = TRUE;
 
-    $data['block_content_field_data']['type']['field']['id'] = 'block_content_type';
+    $data['block_content_field_data']['type']['field']['id'] = 'field';
 
     // @todo Figure out the way to integrate this automatic in
     //   content_translation https://www.drupal.org/node/2410261.
@@ -57,8 +57,6 @@ class BlockContentViewsData extends EntityViewsData {
     $data['block_content_revision']['revision_id']['relationship']['base field'] = 'revision_id';
     $data['block_content_revision']['revision_id']['relationship']['title'] = $this->t('Block Content');
     $data['block_content_revision']['revision_id']['relationship']['label'] = $this->t('Get the actual block content from a block content revision.');
-
-    $data['block_content_revision']['revision_log']['field']['id'] = 'xss';
 
     return $data;
 

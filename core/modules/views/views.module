@@ -10,7 +10,7 @@
  */
 
 use Drupal\Component\Utility\Html;
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -61,8 +61,8 @@ function views_views_pre_render($view) {
         'views_dom_id:' . $view->dom_id => array(
           'view_name' => $view->storage->id(),
           'view_display_id' => $view->current_display,
-          'view_args' => String::checkPlain(implode('/', $view->args)),
-          'view_path' => String::checkPlain(Url::fromRoute('<current>')->toString()),
+          'view_args' => SafeMarkup::checkPlain(implode('/', $view->args)),
+          'view_path' => SafeMarkup::checkPlain(Url::fromRoute('<current>')->toString()),
           'view_base_path' => $view->getPath(),
           'view_dom_id' => $view->dom_id,
           // To fit multiple views on a page, the programmer may have
@@ -209,10 +209,6 @@ function views_theme($existing, $type, $theme, $path) {
     'render element' => 'form',
   );
 
-  $hooks['views_more'] = $base + array(
-    'variables' => array('more_url' => NULL, 'link_text' => 'more', 'view' => NULL),
-  );
-
   return $hooks;
 }
 
@@ -275,6 +271,15 @@ function views_theme_suggestions_comment_alter(array &$suggestions, array $varia
     if (!empty($comment->view->current_display)) {
       $suggestions[] = 'comment__view__' . $comment->view->storage->id() . '__' . $comment->view->current_display;
     }
+  }
+}
+
+/**
+ * Implements hook_theme_suggestions_HOOK_alter().
+ */
+function views_theme_suggestions_container_alter(array &$suggestions, array $variables) {
+  if (!empty($variables['element']['#type']) && $variables['element']['#type'] == 'more_link' && !empty($variables['element']['#view']) && $variables['element']['#view'] instanceof \Drupal\views\ViewExecutable) {
+    $suggestions = array_merge($suggestions, $variables['element']['#view']->buildThemeFunctions('container__more_link'));
   }
 }
 
@@ -462,35 +467,29 @@ function views_add_contextual_links(&$render_element, $location, ViewExecutable 
  * Implements hook_ENTITY_TYPE_create() for 'field_config'.
  */
 function views_field_config_create(FieldConfigInterface $field) {
-  // @todo: Is this necessary? Use cache tags to only delete Views' cache data?
-  \Drupal::cache('discovery')->deleteAll();
+  Views::viewsData()->clear();
 }
 
 /**
  * Implements hook_ENTITY_TYPE_update() for 'field_config'.
  */
 function views_field_config_update(FieldConfigInterface $field) {
-  Cache::invalidateTags(['extension:views']);
-  \Drupal::cache('render')->deleteAll();
+  Views::viewsData()->clear();
 }
 
 /**
  * Implements hook_ENTITY_TYPE_delete() for 'field_config'.
  */
 function views_field_config_delete(FieldConfigInterface $field) {
-  Cache::invalidateTags(['extension:views']);
-  \Drupal::cache('render')->deleteAll();
+  Views::viewsData()->clear();
 }
 
 /**
  * Invalidate the views cache, forcing a rebuild on the next grab of table data.
  */
 function views_invalidate_cache() {
-  // Clear Views' info cache entries.
-  Cache::invalidateTags(['extension:views']);
-
   // Set the menu as needed to be rebuilt.
-  \Drupal::service('router.builder_indicator')->setRebuildNeeded();
+  \Drupal::service('router.builder')->setRebuildNeeded();
 
   $module_handler = \Drupal::moduleHandler();
 
@@ -604,58 +603,6 @@ function views_hook_info() {
 }
 
 /**
- * Returns an array of all enabled views, as fully loaded $view objects.
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Drupal\views\Views::getEnabledViews().
- */
-function views_get_enabled_views() {
-  return Views::getEnabledViews();
-}
-
-/**
- * Returns an array of all disabled views, as fully loaded $view objects.
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Drupal\views\Views::getDisabledViews().
- */
-function views_get_disabled_views() {
-  return Views::getDisabledViews();
-}
-
-/**
- * Return an array of view as options array, that can be used by select,
- * checkboxes and radios as #options.
- *
- * @param bool $views_only
- *  If TRUE, only return views, not displays.
- * @param string $filter
- *  Filters the views on status. Can either be 'all' (default), 'enabled' or
- *  'disabled'
- * @param  mixed $exclude_view
- *  view or current display to exclude
- *  either a
- *  - views object (containing $exclude_view->storage->name and $exclude_view->current_display)
- *  - views name as string:  e.g. my_view
- *  - views name and display id (separated by ':'): e.g. my_view:default
- * @param bool $optgroup
- *  If TRUE, returns an array with optgroups for each view (will be ignored for
- *  $views_only = TRUE). Can be used by select
- * @param bool $sort
- *  If TRUE, the list of views is sorted ascending.
- *
- * @return array
- *  an associative array for use in select.
- *  - key: view name and display id separated by ':', or the view name only
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Drupal\views\Views::getViewsAsOptions().
- */
-function views_get_views_as_options($views_only = FALSE, $filter = 'all', $exclude_view = NULL, $optgroup = FALSE, $sort = FALSE) {
-  return Views::getViewsAsOptions($views_only, $filter, $exclude_view, $optgroup, $sort);
-}
-
-/**
  * Returns whether the view is enabled.
  *
  * @param \Drupal\views\Entity\View $view
@@ -742,7 +689,7 @@ function views_pre_render_views_form_views_form($element) {
 }
 
 /**
- * Implement hook_form_alter for the exposed form.
+ * Implements hook_form_alter() for the exposed form.
  *
  * Since the exposed form is a GET form, we don't want it to send a wide
  * variety of information.
@@ -764,7 +711,7 @@ function views_query_views_alter(AlterableInterface $query) {
   $tables = &$query->getTables();
   $where = &$query->conditions();
 
-  // Replaces substitions in tables.
+  // Replaces substitutions in tables.
   foreach ($tables as $table_name => $table_metadata) {
     foreach ($table_metadata['arguments'] as $replacement_key => $value) {
       if (isset($substitutions[$value])) {
@@ -773,7 +720,7 @@ function views_query_views_alter(AlterableInterface $query) {
     }
   }
 
-  // Replaces substitions in filter criteria.
+  // Replaces substitutions in filter criteria.
   _views_query_tag_alter_condition($query, $where, $substitutions);
 }
 

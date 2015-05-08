@@ -26,7 +26,7 @@ class ConfigSchemaTest extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = array('system', 'language', 'locale', 'field', 'image', 'config_test', 'config_schema_test');
+  public static $modules = array('system', 'language', 'field', 'image', 'config_test', 'config_schema_test');
 
   /**
    * {@inheritdoc}
@@ -61,6 +61,8 @@ class ConfigSchemaTest extends KernelTestBase {
     $expected = array();
     $expected['label'] = 'Schema test data';
     $expected['class'] = '\Drupal\Core\Config\Schema\Mapping';
+    $expected['mapping']['langcode']['type'] = 'string';
+    $expected['mapping']['langcode']['label'] = 'Language code';
     $expected['mapping']['testitem'] = array('label' => 'Test item');
     $expected['mapping']['testlist'] = array('label' => 'Test list');
     $expected['type'] = 'config_schema_test.someschema';
@@ -101,7 +103,7 @@ class ConfigSchemaTest extends KernelTestBase {
       'type' => 'text',
     );
     $expected['mapping']['langcode'] = array(
-      'label' => 'Default language',
+      'label' => 'Language code',
       'type' => 'string',
     );
     $expected['type'] = 'system.maintenance';
@@ -114,6 +116,10 @@ class ConfigSchemaTest extends KernelTestBase {
     $expected['label'] = 'Ignore test';
     $expected['class'] = '\Drupal\Core\Config\Schema\Mapping';
     $expected['definition_class'] = '\Drupal\Core\TypedData\MapDataDefinition';
+    $expected['mapping']['langcode'] = array(
+      'type' => 'string',
+      'label' => 'Language code',
+    );
     $expected['mapping']['label'] = array(
       'label' =>  'Label',
       'type' => 'label',
@@ -156,7 +162,7 @@ class ConfigSchemaTest extends KernelTestBase {
     $expected['mapping']['uuid']['type'] = 'string';
     $expected['mapping']['uuid']['label'] = 'UUID';
     $expected['mapping']['langcode']['type'] = 'string';
-    $expected['mapping']['langcode']['label'] = 'Default language';
+    $expected['mapping']['langcode']['label'] = 'Language code';
     $expected['mapping']['status']['type'] = 'boolean';
     $expected['mapping']['status']['label'] = 'Status';
     $expected['mapping']['dependencies']['type'] = 'config_dependencies';
@@ -165,14 +171,14 @@ class ConfigSchemaTest extends KernelTestBase {
     $expected['mapping']['label']['type'] = 'label';
     $expected['mapping']['label']['label'] = 'Label';
     $expected['mapping']['effects']['type'] = 'sequence';
-    $expected['mapping']['effects']['sequence'][0]['type'] = 'mapping';
-    $expected['mapping']['effects']['sequence'][0]['mapping']['id']['type'] = 'string';
-    $expected['mapping']['effects']['sequence'][0]['mapping']['data']['type'] = 'image.effect.[%parent.id]';
-    $expected['mapping']['effects']['sequence'][0]['mapping']['weight']['type'] = 'integer';
-    $expected['mapping']['effects']['sequence'][0]['mapping']['uuid']['type'] = 'string';
+    $expected['mapping']['effects']['sequence']['type'] = 'mapping';
+    $expected['mapping']['effects']['sequence']['mapping']['id']['type'] = 'string';
+    $expected['mapping']['effects']['sequence']['mapping']['data']['type'] = 'image.effect.[%parent.id]';
+    $expected['mapping']['effects']['sequence']['mapping']['weight']['type'] = 'integer';
+    $expected['mapping']['effects']['sequence']['mapping']['uuid']['type'] = 'string';
     $expected['mapping']['third_party_settings']['type'] = 'sequence';
     $expected['mapping']['third_party_settings']['label'] = 'Third party settings';
-    $expected['mapping']['third_party_settings']['sequence'][0]['type'] = '[%parent.%parent.%type].third_party.[%key]';
+    $expected['mapping']['third_party_settings']['sequence']['type'] = '[%parent.%parent.%type].third_party.[%key]';
     $expected['type'] = 'image.style.*';
 
     $this->assertEqual($definition, $expected);
@@ -222,6 +228,8 @@ class ConfigSchemaTest extends KernelTestBase {
     $expected = array();
     $expected['label'] = 'Schema multiple filesytem marker test';
     $expected['class'] = '\Drupal\Core\Config\Schema\Mapping';
+    $expected['mapping']['langcode']['type'] = 'string';
+    $expected['mapping']['langcode']['label'] = 'Language code';
     $expected['mapping']['testid']['type'] = 'string';
     $expected['mapping']['testid']['label'] = 'ID';
     $expected['mapping']['testdescription']['type'] = 'text';
@@ -248,7 +256,7 @@ class ConfigSchemaTest extends KernelTestBase {
     $expected = array(
       'type' => 'config_schema_test.someschema.with_parents.key_1',
       'label' => 'Test item nested one level',
-      'class' => '\Drupal\Core\TypedData\Plugin\DataType\String',
+      'class' => '\Drupal\Core\TypedData\Plugin\DataType\StringData',
       'definition_class' => '\Drupal\Core\TypedData\DataDefinition',
     );
     $this->assertEqual($definition, $expected);
@@ -259,7 +267,7 @@ class ConfigSchemaTest extends KernelTestBase {
     $expected = array(
       'type' => 'config_schema_test.someschema.with_parents.key_2',
       'label' => 'Test item nested two levels',
-      'class' => '\Drupal\Core\TypedData\Plugin\DataType\String',
+      'class' => '\Drupal\Core\TypedData\Plugin\DataType\StringData',
       'definition_class' => '\Drupal\Core\TypedData\DataDefinition',
     );
     $this->assertEqual($definition, $expected);
@@ -270,7 +278,7 @@ class ConfigSchemaTest extends KernelTestBase {
     $expected = array(
       'type' => 'config_schema_test.someschema.with_parents.key_3',
       'label' => 'Test item nested three levels',
-      'class' => '\Drupal\Core\TypedData\Plugin\DataType\String',
+      'class' => '\Drupal\Core\TypedData\Plugin\DataType\StringData',
       'definition_class' => '\Drupal\Core\TypedData\DataDefinition',
     );
     $this->assertEqual($definition, $expected);
@@ -280,14 +288,8 @@ class ConfigSchemaTest extends KernelTestBase {
    * Tests metadata applied to configuration objects.
    */
   function testSchemaData() {
-    // Try some simple properties.
+    // Try a simple property.
     $meta = \Drupal::service('config.typed')->get('system.site');
-    $property = $meta->get('name');
-    $this->assertTrue($property instanceof StringInterface, 'Got the right wrapper fo the site name property.');
-    $this->assertEqual($property->getValue(), 'Drupal', 'Got the right string value for site name data.');
-    $definition = $property->getDataDefinition();
-    $this->assertTrue($definition['translatable'], 'Got the right translatability setting for site name data.');
-
     $property = $meta->get('page')->get('front');
     $this->assertTrue($property instanceof StringInterface, 'Got the right wrapper fo the page.front property.');
     $this->assertEqual($property->getValue(), 'user/login', 'Got the right value for page.front data.');
@@ -315,13 +317,6 @@ class ConfigSchemaTest extends KernelTestBase {
     $this->assertTrue(!$effect['data']->isEmpty() && $effect['id']->getValue() == 'image_scale', 'Got data for the image scale effect from metadata.');
     $this->assertTrue($effect['data']->get('width') instanceof IntegerInterface, 'Got the right type for the scale effect width.');
     $this->assertEqual($effect['data']->get('width')->getValue(), 480, 'Got the right value for the scale effect width.' );
-
-    // Finally update some object using a configuration wrapper.
-    $new_slogan = 'Site slogan for testing configuration metadata';
-    $wrapper = \Drupal::service('config.typed')->get('system.site');
-    $wrapper->set('slogan', $new_slogan);
-    $site_slogan = $wrapper->get('slogan');
-    $this->assertEqual($site_slogan->getValue(), $new_slogan, 'Successfully updated the contained configuration data');
   }
 
   /**
@@ -343,6 +338,7 @@ class ConfigSchemaTest extends KernelTestBase {
       'float' => '3.14',
       'null_float' => '',
       'sequence' => array (1, 0, 1),
+      'sequence_bc' => array(1, 0, 1),
       // Not in schema and therefore should be left untouched.
       'not_present_in_schema' => TRUE,
       // Test a custom type.
@@ -365,6 +361,7 @@ class ConfigSchemaTest extends KernelTestBase {
       'float' => 3.14,
       'null_float' => NULL,
       'sequence' => array (TRUE, FALSE, TRUE),
+      'sequence_bc' => array(TRUE, FALSE, TRUE),
       'not_present_in_schema' => TRUE,
       'config_schema_test_integer' => 1,
       'config_schema_test_integer_empty_string' => NULL,
@@ -401,6 +398,8 @@ class ConfigSchemaTest extends KernelTestBase {
     $expected['label'] = 'Schema wildcard fallback test';
     $expected['class'] = '\Drupal\Core\Config\Schema\Mapping';
     $expected['definition_class'] = '\Drupal\Core\TypedData\MapDataDefinition';
+    $expected['mapping']['langcode']['type'] = 'string';
+    $expected['mapping']['langcode']['label'] = 'Language code';
     $expected['mapping']['testid']['type'] = 'string';
     $expected['mapping']['testid']['label'] = 'ID';
     $expected['mapping']['testdescription']['type'] = 'text';

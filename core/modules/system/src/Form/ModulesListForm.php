@@ -7,9 +7,10 @@
 
 namespace Drupal\system\Form;
 
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Config\PreExistingConfigException;
+use Drupal\Core\Config\UnmetDependenciesException;
 use Drupal\Core\Controller\TitleResolverInterface;
 use Drupal\Core\Access\AccessManagerInterface;
 use Drupal\Core\Entity\EntityManagerInterface;
@@ -168,7 +169,7 @@ class ModulesListForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
     require_once DRUPAL_ROOT . '/core/includes/install.inc';
-    $distribution = String::checkPlain(drupal_install_profile_distribution_name());
+    $distribution = SafeMarkup::checkPlain(drupal_install_profile_distribution_name());
 
     // Include system.admin.inc so we can use the sort callbacks.
     $this->moduleHandler->loadInclude('system', 'inc', 'system.admin');
@@ -238,6 +239,7 @@ class ModulesListForm extends FormBase {
     $form['actions']['submit'] = array(
       '#type' => 'submit',
       '#value' => $this->t('Save configuration'),
+      '#button_type' => 'primary',
     );
 
     return $form;
@@ -532,6 +534,13 @@ class ModulesListForm extends FormBase {
               '%config_names' => implode(', ', $config_objects),
               '@extension' => $modules['install'][$e->getExtension()]
             )),
+          'error'
+        );
+        return;
+      }
+      catch (UnmetDependenciesException $e) {
+        drupal_set_message(
+          $e->getTranslatedMessage($this->getStringTranslation(), $modules['install'][$e->getExtension()]),
           'error'
         );
         return;

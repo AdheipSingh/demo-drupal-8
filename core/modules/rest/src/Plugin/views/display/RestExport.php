@@ -7,10 +7,9 @@
 
 namespace Drupal\rest\Plugin\views\display;
 
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Core\State\StateInterface;
 use Drupal\Core\Routing\RouteProviderInterface;
-use Drupal\Core\ContentNegotiation;
 use Drupal\views\ViewExecutable;
 use Drupal\views\Plugin\views\display\PathPluginBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -73,13 +72,6 @@ class RestExport extends PathPluginBase {
   protected $mimeType;
 
   /**
-   * The content negotiation library.
-   *
-   * @var \Drupal\Core\ContentNegotiation
-   */
-  protected $contentNegotiation;
-
-  /**
    * Constructs a Drupal\rest\Plugin\ResourceBase object.
    *
    * @param array $configuration
@@ -92,12 +84,9 @@ class RestExport extends PathPluginBase {
    *   The route provider
    * @param \Drupal\Core\State\StateInterface $state
    *   The state key value store.
-   * @param \Drupal\Core\ContentNegotiation $content_negotiation
-   *   The content negotiation library.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, RouteProviderInterface $route_provider, StateInterface $state, ContentNegotiation $content_negotiation) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, RouteProviderInterface $route_provider, StateInterface $state) {
     parent::__construct($configuration, $plugin_id, $plugin_definition, $route_provider, $state);
-    $this->contentNegotiation = $content_negotiation;
   }
 
   /**
@@ -109,8 +98,7 @@ class RestExport extends PathPluginBase {
       $plugin_id,
       $plugin_definition,
       $container->get('router.route_provider'),
-      $container->get('state'),
-      $container->get('content_negotiation')
+      $container->get('state')
     );
   }
 
@@ -120,7 +108,7 @@ class RestExport extends PathPluginBase {
   public function initDisplay(ViewExecutable $view, array &$display, array &$options = NULL) {
     parent::initDisplay($view, $display, $options);
 
-    $request_content_type = $this->contentNegotiation->getContentType($this->view->getRequest());
+    $request_content_type = $this->view->getRequest()->getRequestFormat();
     // Only use the requested content type if it's not 'html'. If it is then
     // default to 'json' to aid debugging.
     // @todo Remove the need for this when we have better content negotiation.
@@ -256,7 +244,7 @@ class RestExport extends PathPluginBase {
       // REST exports should only respond to get methods.
       $requirements = array('_method' => 'GET');
 
-      // Format as a string using pipes as a delimeter.
+      // Format as a string using pipes as a delimiter.
       $requirements['_format'] = implode('|', $style_plugin->getFormats());
 
       // Add the new requirements to the route.
@@ -284,7 +272,7 @@ class RestExport extends PathPluginBase {
     // Wrap the output in a pre tag if this is for a live preview.
     if (!empty($this->view->live_preview)) {
       $build['#prefix'] = '<pre>';
-      $build['#markup'] = String::checkPlain($build['#markup']);
+      $build['#markup'] = SafeMarkup::checkPlain($build['#markup']);
       $build['#suffix'] = '</pre>';
     }
 

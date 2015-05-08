@@ -611,7 +611,7 @@ abstract class StylePluginBase extends PluginBase {
       );
     }
 
-    // If this parameter isn't explicitely set modify the output to be fully
+    // If this parameter isn't explicitly set, modify the output to be fully
     // backward compatible to code before Views 7.x-3.0-rc2.
     // @TODO Remove this as soon as possible e.g. October 2020
     if ($group_rendered === NULL) {
@@ -686,7 +686,7 @@ abstract class StylePluginBase extends PluginBase {
    * @param $field
    *    The id of the field.
    */
-  protected function getFieldValue($index, $field) {
+  public function getFieldValue($index, $field) {
     $this->view->row_index = $index;
     $value = $this->view->field[$field]->getValue($this->view->result[$index]);
     unset($this->view->row_index);

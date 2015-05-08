@@ -9,7 +9,7 @@
  */
 
 use Drupal\Component\Graph\Graph;
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Utility\Error;
 
@@ -44,7 +44,7 @@ function update_check_incompatibility($name, $type = 'module') {
     // We need to do a full rebuild here to make sure the database reflects any
     // code changes that were made in the filesystem before the update script
     // was initiated.
-    $themes = system_rebuild_theme_data();
+    $themes = \Drupal::service('theme_handler')->rebuildThemeData();
     $modules = system_rebuild_module_data();
   }
 
@@ -61,34 +61,6 @@ function update_check_incompatibility($name, $type = 'module') {
     return TRUE;
   }
   return FALSE;
-}
-
-/**
- * Returns whether the settings file requirement has been satisfied.
- *
- * @return array
- *  A requirements info array.
- */
-function update_settings_file_requirements() {
-  $requirements = array();
-
-  // Check whether settings.php needs to be rewritten.
-  $settings_file = conf_path() . '/settings.php';
-  $writable = drupal_verify_install_file($settings_file, FILE_EXIST | FILE_READABLE | FILE_WRITABLE);
-  $requirements['settings file']['title'] = 'Settings file';
-  if ($writable) {
-    $requirements['settings file'] += array(
-      'value' => 'settings.php is writable.',
-    );
-  }
-  else {
-    $requirements['settings file'] += array(
-      'value' => 'settings.php is not writable.',
-      'severity' => REQUIREMENT_ERROR,
-      'description' => 'Drupal requires write permissions to <em>' . $settings_file . '</em> during the update process. If you are unsure how to grant file permissions, consult the <a href="http://drupal.org/server-permissions">online handbook</a>.',
-    );
-  }
-  return $requirements;
 }
 
 /**
@@ -127,7 +99,6 @@ function update_check_requirements() {
   // Check requirements of all loaded modules.
   $requirements = \Drupal::moduleHandler()->invokeAll('requirements', array('update'));
   $requirements += update_system_schema_requirements();
-  $requirements += update_settings_file_requirements();
   return $requirements;
 }
 
@@ -218,7 +189,7 @@ function update_do_one($module, $number, $dependency_map, &$context) {
       $variables = Error::decodeException($e);
       unset($variables['backtrace']);
       // The exception message is run through
-      // \Drupal\Component\Utility\String::checkPlain() by
+      // \Drupal\Component\Utility\SafeMarkup::checkPlain() by
       // \Drupal\Core\Utility\Error::decodeException().
       $ret['#abort'] = array('success' => FALSE, 'query' => t('%type: !message in %function (line %line of %file).', $variables));
     }
@@ -247,7 +218,7 @@ function update_do_one($module, $number, $dependency_map, &$context) {
     drupal_set_installed_schema_version($module, $number);
   }
 
-  $context['message'] = 'Updating ' . String::checkPlain($module) . ' module';
+  $context['message'] = 'Updating ' . SafeMarkup::checkPlain($module) . ' module';
 }
 
 /**
@@ -269,7 +240,7 @@ function update_entity_definitions($module, $number, &$context) {
     $variables = Error::decodeException($e);
     unset($variables['backtrace']);
     // The exception message is run through
-    // \Drupal\Component\Utility\String::checkPlain() by
+    // \Drupal\Component\Utility\SafeMarkup::checkPlain() by
     // \Drupal\Core\Utility\Error::decodeException().
     $ret['#abort'] = array('success' => FALSE, 'query' => t('%type: !message in %function (line %line of %file).', $variables));
     $context['results'][$module][$number] = $ret;

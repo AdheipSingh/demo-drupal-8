@@ -7,7 +7,8 @@
 
 namespace Drupal\filter\Tests;
 
-use Drupal\Component\Utility\String;
+use Drupal\Core\Language\LanguageInterface;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Core\Session\AnonymousUserSession;
 use Drupal\Core\TypedData\OptionsProviderInterface;
 use Drupal\Core\TypedData\DataDefinition;
@@ -28,7 +29,7 @@ class FilterAPITest extends EntityUnitTestBase {
   protected function setUp() {
     parent::setUp();
 
-    $this->installConfig(array('system', 'filter'));
+    $this->installConfig(array('system', 'filter', 'filter_test'));
   }
 
   /**
@@ -216,6 +217,10 @@ class FilterAPITest extends EntityUnitTestBase {
           'weight' => 0,
           'status' => TRUE,
         ),
+        'filter_test_cache_contexts' => array(
+          'weight' => 0,
+          'status' => TRUE,
+        ),
         'filter_test_post_render_cache' => array(
           'weight' => 1,
           'status' => TRUE,
@@ -253,6 +258,14 @@ class FilterAPITest extends EntityUnitTestBase {
       'foo:baz',
     );
     $this->assertEqual($expected_cache_tags, $build['#cache']['tags'], 'Expected cache tags present.');
+    $expected_cache_contexts = [
+      // The cache context set by the filter_test_cache_contexts filter.
+      'languages:' . LanguageInterface::TYPE_CONTENT,
+      // The default cache contexts for Renderer.
+      'languages:' . LanguageInterface::TYPE_INTERFACE,
+      'theme',
+    ];
+    $this->assertEqual($expected_cache_contexts, $build['#cache']['contexts'], 'Expected cache contexts present.');
     $expected_markup = '<p>Hello, world!</p><p>This is a dynamic llama.</p>';
     $this->assertEqual($expected_markup, $build['#markup'], 'Expected #post_render_cache callback has been applied.');
   }
@@ -413,7 +426,7 @@ class FilterAPITest extends EntityUnitTestBase {
 
     $module_data = _system_rebuild_module_data();
     $this->assertTrue($module_data['filter_test']->info['required'], 'The filter_test module is required.');
-    $this->assertEqual($module_data['filter_test']->info['explanation'], String::format('Provides a filter plugin that is in use in the following filter formats: %formats', array('%formats' => $filter_format->label())));
+    $this->assertEqual($module_data['filter_test']->info['explanation'], SafeMarkup::format('Provides a filter plugin that is in use in the following filter formats: %formats', array('%formats' => $filter_format->label())));
 
     // Disable the filter_test_restrict_tags_and_attributes filter plugin but
     // have custom configuration so that the filter plugin is still configured

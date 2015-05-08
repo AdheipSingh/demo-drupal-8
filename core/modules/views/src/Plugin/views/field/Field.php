@@ -9,6 +9,7 @@ namespace Drupal\views\Plugin\views\field;
 
 use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Component\Utility\Xss as CoreXss;
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityManagerInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
@@ -21,7 +22,7 @@ use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Render\Element;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\field\Views\FieldAPIHandlerTrait;
+use Drupal\views\FieldAPIHandlerTrait;
 use Drupal\views\Entity\Render\EntityTranslationRenderTrait;
 use Drupal\views\Plugin\CacheablePluginInterface;
 use Drupal\views\Plugin\views\display\DisplayPluginBase;
@@ -272,7 +273,7 @@ class Field extends FieldPluginBase implements CacheablePluginInterface, MultiIt
     }
 
     // Let the configured entity translation renderer alter the query if needed.
-    $this->getEntityTranslationRenderer()->query($this->query);
+    $this->getEntityTranslationRenderer()->query($this->query, $this->relationship);
   }
 
   /**
@@ -373,9 +374,15 @@ class Field extends FieldPluginBase implements CacheablePluginInterface, MultiIt
       'default' => $default_column,
     );
 
-    $options['type'] = array(
-      'default' => isset($field_type['default_formatter']) ? $field_type['default_formatter'] : '',
-    );
+    if (isset($this->definition['default_formatter'])) {
+      $options['type'] = ['default' => $this->definition['default_formatter']];
+    }
+    elseif (isset($field_type['default_formatter'])) {
+      $options['type'] = ['default' => $field_type['default_formatter']];
+    }
+    else {
+      $options['type'] = ['default' => ''];
+    }
 
     $options['settings'] = array(
       'default' => isset($this->definition['default_formatter_settings']) ? $this->definition['default_formatter_settings'] : [],
@@ -725,26 +732,22 @@ class Field extends FieldPluginBase implements CacheablePluginInterface, MultiIt
     );
     $render_array = $entity->get($this->definition['field_name'])->view($display);
 
-    $items = array();
     if ($this->options['field_api_classes']) {
       return array(array('rendered' => $this->renderer->render($render_array)));
     }
 
-    foreach (Element::children($render_array) as $count) {
-      $items[$count]['rendered'] = $render_array[$count];
-      // FieldItemListInterface::view() adds an #access property to the render
-      // array that determines whether or not the current user is allowed to
-      // view the field in the context of the current entity. We need to respect
-      // this parameter when we pull out the children of the field array for
-      // rendering.
-      if (isset($render_array['#access'])) {
-        $items[$count]['rendered']['#access'] = $render_array['#access'];
+    $items = array();
+    foreach (Element::children($render_array) as $delta) {
+      $items[$delta]['rendered'] = $render_array[$delta];
+      // Merge the cacheability metadata of the top-level render array into
+      // each child because they will most likely be rendered individually.
+      if (isset($render_array['#cache'])) {
+        CacheableMetadata::createFromRenderArray($render_array)
+          ->merge(CacheableMetadata::createFromRenderArray($items[$delta]['rendered']))
+          ->applyTo($items[$delta]['rendered']);
       }
-      // Only add the raw field items (for use in tokens) if the current user
-      // has access to view the field content.
-      if ((!isset($items[$count]['rendered']['#access']) || $items[$count]['rendered']['#access']) && !empty($render_array['#items'][$count])) {
-        $items[$count]['raw'] = $render_array['#items'][$count];
-      }
+      // Add the raw field items (for use in tokens).
+      $items[$delta]['raw'] = $render_array['#items'][$delta];
     }
     return $items;
   }
@@ -955,10 +958,7 @@ class Field extends FieldPluginBase implements CacheablePluginInterface, MultiIt
    * {@inheritdoc}
    */
   public function getCacheContexts() {
-    // @todo what to do about field access?
-    $contexts = [];
-
-    $contexts[] = 'cache.context.user';
+    $contexts = $this->getEntityTranslationRenderer()->getCacheContexts();
 
     return $contexts;
   }

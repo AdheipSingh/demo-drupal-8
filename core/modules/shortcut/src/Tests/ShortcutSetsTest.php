@@ -134,6 +134,7 @@ class ShortcutSetsTest extends ShortcutTestBase {
     $this->assertText(t('The new set label is required.'));
     $current_set = shortcut_current_displayed_set($this->adminUser);
     $this->assertEqual($current_set->id(), $this->set->id(), 'Attempting to switch to a new shortcut set without providing a set name does not succeed.');
+    $this->assertFieldByXPath("//input[@name='label' and contains(concat(' ', normalize-space(@class), ' '), ' error ')]", NULL, 'The new set label field has the error class');
   }
 
   /**
@@ -148,18 +149,6 @@ class ShortcutSetsTest extends ShortcutTestBase {
     $this->drupalPostForm(NULL, array('label' => $new_label), t('Save'));
     $set = ShortcutSet::load($set->id());
     $this->assertTrue($set->label() == $new_label, 'Shortcut set has been successfully renamed.');
-  }
-
-  /**
-   * Tests renaming a shortcut set to the same name as another set.
-   */
-  function testShortcutSetRenameAlreadyExists() {
-    $set = $this->generateShortcutSet($this->randomMachineName());
-    $existing_label = $this->set->label();
-    $this->drupalPostForm('admin/config/user-interface/shortcut/manage/' . $set->id(), array('label' => $existing_label), t('Save'));
-    $this->assertRaw(t('The shortcut set %name already exists. Choose another name.', array('%name' => $existing_label)));
-    $set = ShortcutSet::load($set->id());
-    $this->assertNotEqual($set->label(), $existing_label, format_string('The shortcut set %title cannot be renamed to %new-title because a shortcut set with that title already exists.', array('%title' => $set->label(), '%new-title' => $existing_label)));
   }
 
   /**

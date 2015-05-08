@@ -9,7 +9,6 @@ namespace Drupal\Core\Utility;
 
 use Drupal\Component\Serialization\Json;
 use Drupal\Component\Utility\SafeMarkup;
-use Drupal\Component\Utility\String;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Path\AliasManagerInterface;
@@ -85,7 +84,6 @@ class LinkGenerator implements LinkGeneratorInterface {
     $variables['options'] += array(
       'attributes' => array(),
       'query' => array(),
-      'html' => FALSE,
       'language' => NULL,
       'set_active_class' => FALSE,
       'absolute' => FALSE,
@@ -133,11 +131,12 @@ class LinkGenerator implements LinkGeneratorInterface {
 
     // The result of the url generator is a plain-text URL. Because we are using
     // it here in an HTML argument context, we need to encode it properly.
-    $url = String::checkPlain($url->toString());
+    $url = SafeMarkup::checkPlain($url->toString());
 
-    // Sanitize the link text if necessary.
-    $text = $variables['options']['html'] ? $variables['text'] : String::checkPlain($variables['text']);
-    return SafeMarkup::set('<a href="' . $url . '"' . $attributes . '>' . $text . '</a>');
+    // Make sure the link text is sanitized.
+    $safe_text = SafeMarkup::escape($variables['text']);
+
+    return SafeMarkup::set('<a href="' . $url . '"' . $attributes . '>' . $safe_text . '</a>');
   }
 
 }

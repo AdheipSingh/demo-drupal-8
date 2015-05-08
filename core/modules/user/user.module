@@ -1,7 +1,7 @@
 <?php
 
 use Drupal\Component\Utility\Crypt;
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Asset\AttachedAssetsInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
@@ -62,7 +62,7 @@ function user_help($route_name, RouteMatchInterface $route_match) {
       $output .= '<dt>' . t('Setting permissions') . '</dt>';
       $output .= '<dd>' . t('After creating roles, you can set permissions for each role on the <a href="!permissions_user">Permissions page</a>. Granting a permission allows users who have been assigned a particular role to perform an action on the site, such as viewing content, editing or creating  a particular type of content, administering settings for a particular module, or using a particular function of the site (such as search).', array('!permissions_user' => \Drupal::url('user.admin_permissions'))) . '</dd>';
       $output .= '<dt>' . t('Managing account settings') . '</dt>';
-      $output .= '<dd>' . t('The <a href="!accounts">Account settings page</a> allows you to manage settings for the displayed name of the Anonymous user role, personal contact forms, user registration settings, and account cancellation settings. On this page you can also manage settings for account personalization (including signatures), and adapt the text for the email messages that users receive when they register or request a password recovery. You may also set which role is automatically assigned new permissions whenever a module is enabled (the Administrator role).', array('!accounts'  => \Drupal::url('entity.user.admin_form'))) . '</dd>';
+      $output .= '<dd>' . t('The <a href="!accounts">Account settings page</a> allows you to manage settings for the displayed name of the Anonymous user role, personal contact forms, user registration settings, and account cancellation settings. On this page you can also manage settings for account personalization, and adapt the text for the email messages that users receive when they register or request a password recovery. You may also set which role is automatically assigned new permissions whenever a module is enabled (the Administrator role).', array('!accounts'  => \Drupal::url('entity.user.admin_form'))) . '</dd>';
       $output .= '<dt>' . t('Managing user account fields') . '</dt>';
       $output .= '<dd>' . t('Because User accounts are an entity type, you can extend them by adding fields through the Manage fields tab on the <a href="!accounts">Account settings page</a>. By adding fields for e.g., a picture, a biography, or address, you can a create a custom profile for the users of the website. For background information on entities and fields, see the <a href="!field_help">Field module help page</a>.', array('!field_help'=>\Drupal::url('help.page', array('name' => 'field')), '!accounts' => \Drupal::url('entity.user.admin_form'))) . '</dd>';
       $output .= '</dl>';
@@ -113,37 +113,7 @@ function user_js_settings_alter(&$settings, AttachedAssetsInterface $assets) {
   // can be reliably cached on the client side.
   $user = \Drupal::currentUser();
   $settings['user']['uid'] = $user->id();
-  $settings['user']['permissionsHash'] = \Drupal::service('user.permissions_hash')->generate($user);
-}
-
-/**
- * Populates $entity->account for each prepared entity.
- *
- * Called by Drupal\Core\Entity\EntityViewBuilderInterface::buildComponents()
- * implementations.
- *
- * @param array &$build
- *   A renderable array representing the entity content.
- * @param \Drupal\user\EntityOwnerInterface[] $entities
- *   The entities keyed by entity ID.
- */
-function user_attach_accounts(array &$build, array $entities) {
-  $uids = array();
-  foreach ($entities as $entity) {
-    $uids[] = $entity->getOwnerId();
-  }
-  $uids = array_unique($uids);
-  $accounts = user_load_multiple($uids);
-  $anonymous = entity_create('user', array('uid' => 0));
-
-  foreach ($entities as $id => $entity) {
-    if (isset($accounts[$entity->getOwnerId()])) {
-      $entities[$id]->setOwner($accounts[$entity->getOwnerId()]);
-    }
-    else {
-      $entities[$id]->setOwner($anonymous);
-    }
-  }
+  $settings['user']['permissionsHash'] = \Drupal::service('user_permissions_hash_generator')->generate($user);
 }
 
 /**
@@ -168,13 +138,6 @@ function user_entity_extra_field_info() {
     'description' => t('User module account form elements.'),
     'weight' => -10,
   );
-  if (\Drupal::config('user.settings')->get('signatures')) {
-    $fields['user']['user']['form']['signature_settings'] = array(
-      'label' => t('Signature settings'),
-      'description' => t('User module form element.'),
-      'weight' => 1,
-    );
-  }
   $fields['user']['user']['form']['language'] = array(
     'label' => t('Language settings'),
     'description' => t('User module form element.'),
@@ -214,7 +177,7 @@ function user_entity_extra_field_info() {
  *   An array of user objects, indexed by uid.
  *
  * @see entity_load_multiple()
- * @see user_load()
+ * @see \Drupal\user\Entity\User::load()
  * @see user_load_by_mail()
  * @see user_load_by_name()
  * @see \Drupal\Core\Entity\Query\QueryInterface
@@ -245,7 +208,7 @@ function user_load_multiple(array $uids = NULL, $reset = FALSE) {
  * @deprecated in Drupal 8.x, will be removed before Drupal 9.0.
  *   Use \Drupal\user\Entity\User::load().
  *
- * @see user_load_multiple()
+ * @see \Drupal\user\Entity\User::loadMultiple()
  */
 function user_load($uid, $reset = FALSE) {
   if ($reset) {
@@ -263,7 +226,7 @@ function user_load($uid, $reset = FALSE) {
  *   A fully-loaded $user object upon successful user load or FALSE if user
  *   cannot be loaded.
  *
- * @see user_load_multiple()
+ * @see \Drupal\user\Entity\User::loadMultiple()
  */
 function user_load_by_mail($mail) {
   $users = entity_load_multiple_by_properties('user', array('mail' => $mail));
@@ -279,7 +242,7 @@ function user_load_by_mail($mail) {
  *   A fully-loaded $user object upon successful user load or FALSE if user
  *   cannot be loaded.
  *
- * @see user_load_multiple()
+ * @see \Drupal\user\Entity\User::loadMultiple()
  */
 function user_load_by_name($name) {
   $users = entity_load_multiple_by_properties('user', array('name' => $name));
@@ -412,30 +375,6 @@ function user_user_view(array &$build, UserInterface $account, EntityViewDisplay
 }
 
 /**
- * Form validation handler for the current password on the user account form.
- *
- * @see AccountForm::form()
- */
-function user_validate_current_pass(&$form, FormStateInterface $form_state) {
-  $account = $form_state->get('user');
-  foreach ($form_state->getValue('current_pass_required_values') as $key => $name) {
-    // This validation only works for required textfields (like mail) or
-    // form values like password_confirm that have their own validation
-    // that prevent them from being empty if they are changed.
-    $current_value = $account->hasField($key) ? $account->get($key)->value : $account->$key;
-    if ((strlen(trim($form_state->getValue($key))) > 0) && ($form_state->getValue($key) != $current_value)) {
-      $current_pass_failed = $form_state->isValueEmpty('current_pass') || !\Drupal::service('password')->check($form_state->getValue('current_pass'), $account);
-      if ($current_pass_failed) {
-        $form_state->setErrorByName('current_pass', t("Your current password is missing or incorrect; it's required to change the %name.", array('%name' => $name)));
-        $form_state->setErrorByName($key);
-      }
-      // We only need to check the password once.
-      break;
-    }
-  }
-}
-
-/**
  * Implements hook_preprocess_HOOK() for block templates.
  */
 function user_preprocess_block(&$variables) {
@@ -456,7 +395,7 @@ function user_preprocess_block(&$variables) {
  *
  * @return
  *   An unsanitized string with the username to display. The code receiving
- *   this result must ensure that \Drupal\Component\Utility\String::checkPlain()
+ *   this result must ensure that \Drupal\Component\Utility\SafeMarkup::checkPlain()
  *   is called on it before it is printed to the page.
  *
  * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
@@ -500,7 +439,7 @@ function user_template_preprocess_default_variables_alter(&$variables) {
  *
  * Modules that make any changes to variables like 'name' or 'extra' must ensure
  * that the final string is safe to include directly in the output by using
- * \Drupal\Component\Utility\String::checkPlain() or
+ * \Drupal\Component\Utility\SafeMarkup::checkPlain() or
  * \Drupal\Component\Utility\Xss::filter().
  */
 function template_preprocess_username(&$variables) {
@@ -527,7 +466,7 @@ function template_preprocess_username(&$variables) {
   else {
     $variables['truncated'] = FALSE;
   }
-  $variables['name'] = String::checkPlain($name);
+  $variables['name'] = SafeMarkup::checkPlain($name);
   $variables['profile_access'] = \Drupal::currentUser()->hasPermission('access user profiles');
 
   $external = FALSE;
@@ -589,7 +528,7 @@ function user_login_finalize(UserInterface $account) {
   // fails or incorrectly does a redirect which would leave the old session
   // in place.
   \Drupal::service('session')->migrate();
-
+  \Drupal::service('session')->set('uid', $account->id());
   \Drupal::moduleHandler()->invokeAll('user_login', array($account));
 }
 
@@ -635,7 +574,7 @@ function user_pass_reset_url($account, $options = array()) {
     array(
       'uid' => $account->id(),
       'timestamp' => $timestamp,
-      'hash' => user_pass_rehash($account->getPassword(), $timestamp, $account->getLastLoginTime()),
+      'hash' => user_pass_rehash($account->getPassword(), $timestamp, $account->getLastLoginTime(), $account->id()),
     ),
     array(
       'absolute' => TRUE,
@@ -672,7 +611,7 @@ function user_cancel_url($account, $options = array()) {
   return \Drupal::url('user.cancel_confirm', [
     'user' => $account->id(),
     'timestamp' => $timestamp,
-    'hashed_pass' => user_pass_rehash($account->getPassword(), $timestamp, $account->getLastLoginTime())
+    'hashed_pass' => user_pass_rehash($account->getPassword(), $timestamp, $account->getLastLoginTime(), $account->id())
   ], $url_options);
 }
 
@@ -694,12 +633,14 @@ function user_cancel_url($account, $options = array()) {
  *   A UNIX timestamp, typically REQUEST_TIME.
  * @param int $login
  *   The UNIX timestamp of the user's last login.
+ * @param int $uid
+ *   The user ID.
  *
- * @return
+ * @return string
  *   A string that is safe for use in URLs and SQL statements.
  */
-function user_pass_rehash($password, $timestamp, $login) {
-  return Crypt::hmacBase64($timestamp . $login, Settings::getHashSalt() . $password);
+function user_pass_rehash($password, $timestamp, $login, $uid) {
+  return Crypt::hmacBase64($timestamp . $login . $uid, Settings::getHashSalt() . $password);
 }
 
 /**
@@ -719,7 +660,7 @@ function user_pass_rehash($password, $timestamp, $login) {
  * @see _user_cancel()
  */
 function user_cancel($edit, $uid, $method) {
-  $account = user_load($uid);
+  $account = User::load($uid);
 
   if (!$account) {
     drupal_set_message(t('The user account %id does not exist.', array('%id' => $uid)), 'error');
@@ -936,7 +877,7 @@ function user_view($account, $view_mode = 'full', $langcode = NULL) {
  * Constructs a drupal_render() style array from an array of loaded users.
  *
  * @param $accounts
- *   An array of user accounts as returned by user_load_multiple().
+ *   An array of user accounts as returned by User::loadMultiple().
  * @param $view_mode
  *   (optional) View mode, e.g., 'full', 'teaser'... Defaults to 'teaser.'
  * @param $langcode
@@ -1026,7 +967,7 @@ function user_role_names($membersonly = FALSE, $permission = NULL) {
  */
 function user_user_role_insert(RoleInterface $role) {
   // Ignore the authenticated and anonymous roles or the role is being synced.
-  if (in_array($role->id(), array(DRUPAL_AUTHENTICATED_RID, DRUPAL_ANONYMOUS_RID)) || $role->isSyncing()) {
+  if (in_array($role->id(), array(RoleInterface::AUTHENTICATED_ID, RoleInterface::ANONYMOUS_ID)) || $role->isSyncing()) {
     return;
   }
 
@@ -1067,7 +1008,7 @@ function user_user_role_delete(RoleInterface $role) {
   $user_storage->deleteRoleReferences(array($role->id()));
 
   // Ignore the authenticated and anonymous roles or the role is being synced.
-  if (in_array($role->id(), array(DRUPAL_AUTHENTICATED_RID, DRUPAL_ANONYMOUS_RID)) || $role->isSyncing()) {
+  if (in_array($role->id(), array(RoleInterface::AUTHENTICATED_ID, RoleInterface::ANONYMOUS_ID)) || $role->isSyncing()) {
     return;
   }
 
@@ -1099,7 +1040,7 @@ function user_roles($membersonly = FALSE, $permission = NULL) {
   // Do not cache roles for specific permissions. This data is not requested
   // frequently enough to justify the additional memory use.
   if (empty($permission)) {
-    $cid = $membersonly ? DRUPAL_AUTHENTICATED_RID : DRUPAL_ANONYMOUS_RID;
+    $cid = $membersonly ? RoleInterface::AUTHENTICATED_ID : RoleInterface::ANONYMOUS_ID;
     if (isset($user_roles[$cid])) {
       return $user_roles[$cid];
     }
@@ -1107,7 +1048,7 @@ function user_roles($membersonly = FALSE, $permission = NULL) {
 
   $roles = Role::loadMultiple();
   if ($membersonly) {
-    unset($roles[DRUPAL_ANONYMOUS_RID]);
+    unset($roles[RoleInterface::ANONYMOUS_ID]);
   }
 
   if (!empty($permission)) {
@@ -1195,11 +1136,12 @@ function user_role_change_permissions($rid, array $permissions = array()) {
  */
 function user_role_grant_permissions($rid, array $permissions = array()) {
   // Grant new permissions for the role.
-  $role = Role::load($rid);
-  foreach ($permissions as $permission) {
-    $role->grantPermission($permission);
+  if ($role = Role::load($rid)) {
+    foreach ($permissions as $permission) {
+      $role->grantPermission($permission);
+    }
+    $role->save();
   }
-  $role->save();
 }
 
 /**
@@ -1330,34 +1272,11 @@ function user_form_process_password_confirm($element) {
 }
 
 /**
- * Implements hook_modules_installed().
- */
-function user_modules_installed($modules) {
-  // Assign all available permissions to the administrator role.
-  $rid = \Drupal::config('user.settings')->get('admin_role');
-  if ($rid) {
-    // Some permissions call the url generator, so ensure that the routes are
-    // up to date.
-    \Drupal::service('router.builder_indicator')->setRebuildNeeded();
-    /** @var \Drupal\user\PermissionHandlerInterface $permission_handler */
-    $permission_handler = \Drupal::service('user.permissions');
-    $permissions = $permission_handler->getPermissions();
-    if (!empty($permissions)) {
-      user_role_grant_permissions($rid, array_keys($permissions));
-    }
-  }
-}
-
-/**
  * Implements hook_modules_uninstalled().
  */
 function user_modules_uninstalled($modules) {
   // Remove any potentially orphan module data stored for users.
   \Drupal::service('user.data')->delete($modules);
-  // User signatures require Filter module.
-  if (in_array('filter', $modules)) {
-    \Drupal::configFactory()->getEditable('user.settings')->set('signatures', FALSE)->save();
-  }
 }
 
 /**
@@ -1395,7 +1314,6 @@ function user_toolbar() {
       'account' => array(
         'title' => t('View profile'),
         'url' => Url::fromRoute('user.page'),
-        'html' => TRUE,
         'attributes' => array(
           'title' => t('User account'),
         ),
@@ -1403,7 +1321,6 @@ function user_toolbar() {
       'account_edit' => array(
         'title' => t('Edit profile'),
         'url' => Url::fromRoute('entity.user.edit_form', ['user' => $user->id()]),
-        'html' => TRUE,
         'attributes' => array(
           'title' => t('Edit user account'),
         ),
@@ -1470,7 +1387,8 @@ function user_logout() {
   // Session::invalidate(). Regrettably this method is currently broken and may
   // lead to the creation of spurious session records in the database.
   // @see https://github.com/symfony/symfony/issues/12375
-  session_destroy();
+  \Drupal::service('session_manager')->destroy();
+  $user->setAccount(new AnonymousUserSession());
 }
 
 /**

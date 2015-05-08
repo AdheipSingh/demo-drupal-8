@@ -8,7 +8,7 @@
 namespace Drupal\views\Plugin\views;
 
 use Drupal\Component\Plugin\DependentPluginInterface;
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
@@ -169,11 +169,11 @@ abstract class PluginBase extends ComponentPluginBase implements ContainerFactor
    * @param array $options
    *   An array which describes the options of a plugin. Each element is an
    *   associative array containing:
-   *   - default: The default value of one option
+   *   - default: The default value of one option. Should be translated to the
+   *     current interface language if translatable.
    *   - (optional) contains: An array which describes the available options
    *     under the key. If contains is set, the default will be ignored and
    *     assumed to be an empty array.
-   *   - (optional) 'translatable': TRUE if it should be translated, else FALSE.
    *   - (optional) 'bool': TRUE if the value is boolean, else FALSE.
    */
   protected function setOptionDefaults(array &$storage, array $options) {
@@ -313,9 +313,9 @@ abstract class PluginBase extends ComponentPluginBase implements ContainerFactor
   public function pluginTitle() {
     // Short_title is optional so its defaults to an empty string.
     if (!empty($this->definition['short_title'])) {
-      return String::checkPlain($this->definition['short_title']);
+      return SafeMarkup::checkPlain($this->definition['short_title']);
     }
-    return String::checkPlain($this->definition['title']);
+    return SafeMarkup::checkPlain($this->definition['title']);
   }
 
   /**

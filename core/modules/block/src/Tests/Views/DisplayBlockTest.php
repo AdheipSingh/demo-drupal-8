@@ -9,7 +9,7 @@ namespace Drupal\block\Tests\Views;
 
 use Drupal\Component\Serialization\Json;
 use Drupal\Component\Utility\Html;
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\views\Views;
 use Drupal\views\Tests\ViewTestBase;
 use Drupal\views\Tests\ViewTestData;
@@ -95,7 +95,7 @@ class DisplayBlockTest extends ViewTestBase {
     $this->drupalPostForm(NULL, array(), t('Save'));
 
     // Test that the blocks are listed under the correct categories.
-    $category_id = drupal_html_id('edit-category-' . String::checkPlain($category));
+    $category_id = Html::getUniqueId('edit-category-' . SafeMarkup::checkPlain($category));
     $arguments[':id'] = $category_id;
     $this->drupalGet('admin/structure/block');
     $elements = $this->xpath('//details[@id=:id]//li[contains(@class, :li_class)]/a[contains(@href, :href) and text()=:text]', $arguments);
@@ -129,7 +129,7 @@ class DisplayBlockTest extends ViewTestBase {
   /**
    * Tests removing a block display.
    */
-  protected function testDeleteBlockDisplay() {
+  public function testDeleteBlockDisplay() {
     // To test all combinations possible we first place create two instances
     // of the block display of the first view.
     $block_1 = $this->drupalPlaceBlock('views_block:test_view_block-block_1', array('label' => 'test_view_block-block_1:1'));
@@ -273,7 +273,7 @@ class DisplayBlockTest extends ViewTestBase {
   public function testBlockContextualLinks() {
     $this->drupalLogin($this->drupalCreateUser(array('administer views', 'access contextual links', 'administer blocks')));
     $block = $this->drupalPlaceBlock('views_block:test_view_block-block_1');
-    $cached_block = $this->drupalPlaceBlock('views_block:test_view_block-block_1', array('cache' => array('max_age' => 3600)));
+    $cached_block = $this->drupalPlaceBlock('views_block:test_view_block-block_1');
     $this->drupalGet('test-page');
 
     $id = 'block:block=' . $block->id() . ':|entity.view.edit_form:view=test_view_block:location=block&name=test_view_block&display_id=block_1';

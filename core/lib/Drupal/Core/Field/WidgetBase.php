@@ -10,7 +10,7 @@ namespace Drupal\Core\Field;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Component\Utility\SortArray;
-use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\Validator\ConstraintViolationInterface;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
@@ -84,7 +84,7 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
     if ($this->handlesMultipleValues() || isset($get_delta)) {
       $delta = isset($get_delta) ? $get_delta : 0;
       $element = array(
-        '#title' => String::checkPlain($this->fieldDefinition->getLabel()),
+        '#title' => SafeMarkup::checkPlain($this->fieldDefinition->getLabel()),
         '#description' => $this->fieldFilterXss(\Drupal::token()->replace($this->fieldDefinition->getDescription())),
       );
       $element = $this->formSingleElement($items, $delta, $element, $form, $form_state);
@@ -163,7 +163,7 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
         break;
     }
 
-    $title = String::checkPlain($this->fieldDefinition->getLabel());
+    $title = SafeMarkup::checkPlain($this->fieldDefinition->getLabel());
     $description = $this->fieldFilterXss(\Drupal::token()->replace($this->fieldDefinition->getDescription()));
 
     $elements = array();
@@ -217,7 +217,7 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
       // Add 'add more' button, if not working with a programmed form.
       if ($cardinality == FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED && !$form_state->isProgrammed()) {
         $id_prefix = implode('-', array_merge($parents, array($field_name)));
-        $wrapper_id = drupal_html_id($id_prefix . '-add-more-wrapper');
+        $wrapper_id = Html::getUniqueId($id_prefix . '-add-more-wrapper');
         $elements['#prefix'] = '<div id="' . $wrapper_id . '">';
         $elements['#suffix'] = '</div>';
 

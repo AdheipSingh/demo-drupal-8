@@ -656,6 +656,17 @@ interface EntityTypeInterface {
   public function setUriCallback($callback);
 
   /**
+   * The list cache contexts associated with this entity type.
+   *
+   * Enables code listing entities of this type to ensure that rendered listings
+   * are varied as necessary, typically to ensure users of role A see other
+   * entities listed than users of role B.
+   *
+   * @return string[]
+   */
+  public function getListCacheContexts();
+
+  /**
    * The list cache tags associated with this entity type.
    *
    * Enables code listing entities of this type to ensure that newly created
@@ -673,5 +684,62 @@ interface EntityTypeInterface {
    *   dependencies on entities of this type.
    */
   public function getConfigDependencyKey();
+
+  /**
+   * Indicates whether this entity type is commonly used as a reference target.
+   *
+   * @return bool
+   *   TRUE if the entity type is a common reference; FALSE otherwise.
+   */
+  public function isCommonReferenceTarget();
+
+  /**
+   * Returns an array of validation constraints.
+   *
+   * See \Drupal\Core\TypedData\DataDefinitionInterface::getConstraints() for
+   * details on how constraints are defined.
+   *
+   * @return array[]
+   *   An array of validation constraint definitions, keyed by constraint name.
+   *   Each constraint definition can be used for instantiating
+   *   \Symfony\Component\Validator\Constraint objects.
+   *
+   * @see \Symfony\Component\Validator\Constraint
+   */
+  public function getConstraints();
+
+  /**
+   * Sets the array of validation constraints for the FieldItemList.
+   *
+   * NOTE: This will overwrite any previously set constraints. In most cases
+   * ContentEntityTypeInterface::addConstraint() should be used instead.
+   * See \Drupal\Core\TypedData\DataDefinitionInterface::getConstraints() for
+   * details on how constraints are defined.
+   *
+   * @param array $constraints
+   *   An array of validation constraint definitions, keyed by constraint name.
+   *   Each constraint definition can be used for instantiating
+   *   \Symfony\Component\Validator\Constraint objects.
+   *
+   * @return $this
+   *
+   * @see \Symfony\Component\Validator\Constraint
+   */
+  public function setConstraints(array $constraints);
+
+  /**
+   * Adds a validation constraint.
+   *
+   * See \Drupal\Core\TypedData\DataDefinitionInterface::getConstraints() for
+   * details on how constraints are defined.
+   *
+   * @param string $constraint_name
+   *   The name of the constraint to add, i.e. its plugin id.
+   * @param array|null $options
+   *   The constraint options as required by the constraint plugin, or NULL.
+   *
+   * @return $this
+   */
+  public function addConstraint($constraint_name, $options = NULL);
 
 }
