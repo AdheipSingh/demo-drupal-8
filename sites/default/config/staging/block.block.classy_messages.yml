@@ -1,0 +1,22 @@
+uuid: 3765b74c-b892-410e-b144-6860e05dcfde
+langcode: en
+status: true
+dependencies:
+  module:
+    - system
+  theme:
+    - classy
+id: classy_messages
+theme: classy
+region: messages
+weight: 0
+provider: null
+plugin: system_messages_block
+settings:
+  id: system_messages_block
+  label: 'Status messages'
+  provider: system
+  label_display: '0'
+  cache:
+    max_age: -1
+visibility: {  }

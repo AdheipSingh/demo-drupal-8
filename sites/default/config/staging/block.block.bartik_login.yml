@@ -1,0 +1,22 @@
+uuid: 1c998720-adfc-4307-a355-851f1ccb76de
+langcode: en
+status: false
+dependencies:
+  module:
+    - user
+  theme:
+    - bartik
+id: bartik_login
+theme: bartik
+region: '-1'
+weight: 0
+provider: null
+plugin: user_login_block
+settings:
+  id: user_login_block
+  label: 'User login'
+  provider: user
+  label_display: visible
+  cache:
+    max_age: -1
+visibility: {  }

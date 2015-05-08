@@ -1,0 +1,8 @@
+uuid: e2d51e2d-4272-4e8d-8062-985a85732c6b
+langcode: en
+status: true
+dependencies: {  }
+id: account
+label: 'User account menu'
+description: 'Links related to the user account.'
+locked: true

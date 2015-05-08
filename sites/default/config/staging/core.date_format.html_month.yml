@@ -1,0 +1,8 @@
+uuid: 9648d502-e962-4b7a-8057-877a73ee8136
+langcode: en
+status: true
+dependencies: {  }
+id: html_month
+label: 'HTML Month'
+locked: true
+pattern: Y-m
