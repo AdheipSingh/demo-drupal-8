@@ -1,7 +1,7 @@
 
 CONTENTS OF THIS FILE
 ---------------------
-# dhol
+
  * About Drupal
  * Configuration and features
  * Installation profiles
